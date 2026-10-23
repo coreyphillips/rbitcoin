@@ -1205,6 +1205,15 @@ fn fresh_tip_accept_enables_relay_before_tip_follow() {
         mp.take_fee_backfill_due(),
         "the accept-path flip still owes fee-history preload"
     );
+    assert!(
+        mp.take_feefilter_refresh_due(),
+        "leaving IBD latches a feefilter refresh for tip-follow"
+    );
+    mp.set_relay_enabled(true);
+    assert!(
+        !mp.take_feefilter_refresh_due(),
+        "relay already on does not latch another refresh"
+    );
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -1225,6 +1234,7 @@ fn fresh_tip_accept_stays_quiet_when_blocks_only() {
     assert!(!hub.in_ibd());
     assert!(!mp.relay_enabled());
     assert!(!mp.take_fee_backfill_due());
+    assert!(!mp.take_feefilter_refresh_due());
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -1243,7 +1253,12 @@ fn fresh_tip_does_not_reenable_relay_once_ibd_has_ended() {
     let now = hub.clock.now_secs() as u32;
     hub.accept_block(mine(gen, now, 1)).unwrap();
     assert!(mp.relay_enabled());
+    assert!(mp.take_feefilter_refresh_due());
     mp.set_relay_enabled(false);
+    assert!(
+        mp.take_feefilter_refresh_due(),
+        "pausing relay latches a feefilter refresh"
+    );
     let tip = hub.tip_hash().unwrap();
     hub.accept_block(mine(tip, now.saturating_add(1), 2))
         .unwrap();
@@ -1252,6 +1267,7 @@ fn fresh_tip_does_not_reenable_relay_once_ibd_has_ended() {
         !mp.relay_enabled(),
         "a fresh tip with relay already paused stays paused"
     );
+    assert!(!mp.take_feefilter_refresh_due());
     let _ = std::fs::remove_dir_all(dir);
 }
 

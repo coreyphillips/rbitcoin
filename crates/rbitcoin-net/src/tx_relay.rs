@@ -719,6 +719,9 @@ pub struct MempoolHub {
     /// Set when relay flips off to on. The node supervisor spawns fee-history
     /// backfill and clears it. Accept may flip relay before that loop runs.
     fee_backfill_due: AtomicBool,
+    /// Set on any relay edge. Tip-follow re-advertises BIP133 feefilter and
+    /// clears it. Accept can flip relay before that loop sees the edge.
+    feefilter_refresh_due: AtomicBool,
     /// Session id of the current trusted peer. [`u64::MAX`] means none.
     pub trusted_session: AtomicU64,
     /// Broadcast accepts so sessions can inv (origin exclusion is per-session).
@@ -982,6 +985,7 @@ impl MempoolHub {
             query,
             relay_enabled: AtomicBool::new(false),
             fee_backfill_due: AtomicBool::new(false),
+            feefilter_refresh_due: AtomicBool::new(false),
             trusted_session: AtomicU64::new(u64::MAX),
             announce,
             inv_flush,
@@ -1416,7 +1420,8 @@ impl MempoolHub {
     /// (mainnet: 40k+ live after offline). One purge at tip-mode entry is enough
     /// before relay.
     pub fn set_relay_enabled(&self, on: bool) {
-        if on && !self.relay_enabled() {
+        let prev = self.relay_enabled();
+        if on && !prev {
             self.fee_backfill_due.store(true, Ordering::Release);
             // Same lock `connect_at` holds from before the query tip moves
             // until the strip is recorded. Take it before the purge so the
@@ -1444,6 +1449,9 @@ impl MempoolHub {
                 self.note_template_update();
             }
         }
+        if on != prev {
+            self.feefilter_refresh_due.store(true, Ordering::Release);
+        }
         self.relay_enabled.store(on, Ordering::SeqCst);
     }
 
@@ -1454,6 +1462,11 @@ impl MempoolHub {
     /// One-shot: relay just turned on and fee history has not been preloaded.
     pub fn take_fee_backfill_due(&self) -> bool {
         self.fee_backfill_due.swap(false, Ordering::AcqRel)
+    }
+
+    /// One-shot: relay changed and peers still need a BIP133 feefilter.
+    pub fn take_feefilter_refresh_due(&self) -> bool {
+        self.feefilter_refresh_due.swap(false, Ordering::AcqRel)
     }
 
     pub fn set_immediate_relay(&self, on: bool) {
