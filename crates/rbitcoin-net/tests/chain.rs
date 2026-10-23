@@ -1179,6 +1179,55 @@ fn ibd_accept_does_not_fill_recent_confirmed_wtxid() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Regtest `generate` runs while scripthash materialize still holds the
+/// startup task, so the tip-follow loop has not enabled relay yet.
+/// A fresh tip must turn relay on in `connect_at` or `getblocktemplate`
+/// refuses the new pool (`feature_nulldummy`).
+#[test]
+fn fresh_tip_accept_enables_relay_before_tip_follow() {
+    let (dir, hub) = tmp_hub();
+    hub.ensure_genesis().unwrap();
+    let mp =
+        rbitcoin_net::tx_relay::MempoolHub::open(dir.path().join("mp"), Arc::clone(&hub.query))
+            .unwrap();
+    assert!(hub.attach_mempool(Arc::clone(&mp)).is_ok());
+    assert!(hub.in_ibd());
+    assert!(!mp.relay_enabled());
+    let gen = hub.tip_hash().unwrap();
+    let now = hub.clock.now_secs() as u32;
+    hub.accept_block(mine(gen, now, 1)).unwrap();
+    assert!(!hub.in_ibd());
+    assert!(
+        mp.relay_enabled(),
+        "leaving IBD on the accept path enables relay before tip-follow starts"
+    );
+    assert!(
+        mp.take_fee_backfill_due(),
+        "the accept-path flip still owes fee-history preload"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// `-blocksonly` stays quiet after the same fresh tip. The accept path must
+/// not turn relay on just because the tip left IBD.
+#[test]
+fn fresh_tip_accept_stays_quiet_when_blocks_only() {
+    let (dir, hub) = tmp_hub();
+    hub.ensure_genesis().unwrap();
+    hub.set_blocks_only(true);
+    let mp =
+        rbitcoin_net::tx_relay::MempoolHub::open(dir.path().join("mp"), Arc::clone(&hub.query))
+            .unwrap();
+    assert!(hub.attach_mempool(Arc::clone(&mp)).is_ok());
+    let gen = hub.tip_hash().unwrap();
+    let now = hub.clock.now_secs() as u32;
+    hub.accept_block(mine(gen, now, 1)).unwrap();
+    assert!(!hub.in_ibd());
+    assert!(!mp.relay_enabled());
+    assert!(!mp.take_fee_backfill_due());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 #[test]
 fn feefilter_sat_kvb_is_min_relay_once_tip_is_fresh() {
     let (dir, hub) = tmp_hub();

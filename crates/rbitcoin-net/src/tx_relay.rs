@@ -716,6 +716,9 @@ pub struct MempoolHub {
     pub query: Arc<Query>,
     /// When false, peers' tx inv/tx are ignored (IBD / catch-up).
     pub relay_enabled: AtomicBool,
+    /// Set when relay flips off to on. The node supervisor spawns fee-history
+    /// backfill and clears it. Accept may flip relay before that loop runs.
+    fee_backfill_due: AtomicBool,
     /// Session id of the current trusted peer. [`u64::MAX`] means none.
     pub trusted_session: AtomicU64,
     /// Broadcast accepts so sessions can inv (origin exclusion is per-session).
@@ -978,6 +981,7 @@ impl MempoolHub {
             inner: RwLock::new(mp),
             query,
             relay_enabled: AtomicBool::new(false),
+            fee_backfill_due: AtomicBool::new(false),
             trusted_session: AtomicU64::new(u64::MAX),
             announce,
             inv_flush,
@@ -1413,6 +1417,7 @@ impl MempoolHub {
     /// before relay.
     pub fn set_relay_enabled(&self, on: bool) {
         if on && !self.relay_enabled() {
+            self.fee_backfill_due.store(true, Ordering::Release);
             // Same lock `connect_at` holds from before the query tip moves
             // until the strip is recorded. Take it before the purge so the
             // two never invert lock order with the mempool write lock.
@@ -1444,6 +1449,11 @@ impl MempoolHub {
 
     pub fn relay_enabled(&self) -> bool {
         self.relay_enabled.load(Ordering::SeqCst)
+    }
+
+    /// One-shot: relay just turned on and fee history has not been preloaded.
+    pub fn take_fee_backfill_due(&self) -> bool {
+        self.fee_backfill_due.swap(false, Ordering::AcqRel)
     }
 
     pub fn set_immediate_relay(&self, on: bool) {

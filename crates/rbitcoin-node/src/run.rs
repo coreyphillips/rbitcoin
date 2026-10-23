@@ -407,6 +407,7 @@ pub async fn run_p2p(config: NodeConfig) -> Result<(), NodeError> {
         );
     }
     node.hub.set_minimum_chain_work(config.minimum_chain_work);
+    node.hub.set_blocks_only(config.mempool.blocksonly);
     if let Some(secs) = config.max_tip_age_secs {
         node.hub.set_max_tip_age_secs(secs);
     }
@@ -844,7 +845,9 @@ pub async fn run_p2p(config: NodeConfig) -> Result<(), NodeError> {
                 node.hub.in_ibd(),
             ) {
                 mempool_blocking(&mempool, |mp| mp.set_relay_enabled(true)).await?;
-                spawn_fee_history_backfill(&mempool);
+                if mempool_blocking(&mempool, MempoolHub::take_fee_backfill_due).await? {
+                    spawn_fee_history_backfill(&mempool);
+                }
             }
             let mp_live = mempool_blocking(&mempool, MempoolHub::live_count).await?;
             info!(
@@ -1315,13 +1318,17 @@ pub async fn run_p2p(config: NodeConfig) -> Result<(), NodeError> {
                 if want_relay != mempool.relay_enabled() {
                     mempool_blocking(&mempool, move |mp| mp.set_relay_enabled(want_relay)).await?;
                     if want_relay {
-                        spawn_fee_history_backfill(&mempool);
                         info!("ibd: leaving IBD — enabling tx relay");
                     } else {
                         info!("ibd: entering IBD — pausing tx relay");
                     }
                     node.peers
                         .queue_feefilter_all(node.hub.feefilter_sat_kvb() as i64);
+                }
+                if want_relay
+                    && mempool_blocking(&mempool, MempoolHub::take_fee_backfill_due).await?
+                {
+                    spawn_fee_history_backfill(&mempool);
                 }
             }
             if matches!(wake, TipFollowWake::Stop) {

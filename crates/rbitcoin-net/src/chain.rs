@@ -649,6 +649,8 @@ pub struct ChainHub {
     pub chain_work_prefix: RwLock<Vec<Work>>,
     /// Once the relay-inhibited latch clears, stay out.
     pub finished_ibd: AtomicBool,
+    /// `-blocksonly`. A fresh tip must not enable tx relay.
+    pub blocks_only: AtomicBool,
     /// Initial `getheaders` queued by follow sessions since process start.
     pub initial_getheaders_sent: AtomicU64,
     /// `headers` messages applied since process start (including empty).
@@ -773,6 +775,7 @@ impl ChainHub {
             asked_blocks: RwLock::new(HashSet::new()),
             chain_work_prefix: RwLock::new(Vec::new()),
             finished_ibd: AtomicBool::new(false),
+            blocks_only: AtomicBool::new(false),
             initial_getheaders_sent: AtomicU64::new(0),
             headers_replies: AtomicU64::new(0),
             header_inv_challenge: AtomicBool::new(false),
@@ -926,6 +929,30 @@ impl ChainHub {
     /// Min-chain-work floor. Below the floor: no getheaders serve, no tip relay.
     pub fn set_minimum_chain_work(&self, w: Option<[u8; 32]>) {
         *self.minimum_chain_work.write().unwrap() = w;
+    }
+
+    /// `-blocksonly`: the accept path must not enable tx relay.
+    pub fn set_blocks_only(&self, on: bool) {
+        self.blocks_only.store(on, Ordering::Release);
+    }
+
+    /// Turn tx relay on once the tip is recent and above the work floor.
+    ///
+    /// The tip-follow loop does this too, but it starts only after scripthash
+    /// materialize. Regtest `generate` runs during that wait. Call this after
+    /// the template hold is dropped so the purge can take the same mutex.
+    pub fn enable_relay_after_ibd(&self) {
+        if self.blocks_only.load(Ordering::Acquire) {
+            return;
+        }
+        let Some(mp) = self.mempool() else {
+            return;
+        };
+        if mp.relay_enabled() || self.in_ibd() {
+            return;
+        }
+        mp.set_relay_enabled(true);
+        info!("ibd: leaving IBD — enabling tx relay");
     }
 
     /// Claimed nBits meet `pow_limit` and the hash meets that target.
@@ -3807,8 +3834,11 @@ impl ChainHub {
         info!("{}", log_update_tip_line(height, &hash, &header, tx_count));
         log_tip_accept_sh(&self.query, height, tx_count, wall_ns, mp_strip_ns, pres_ns);
         // Record the stripped tip before the announcement, so a builder that
-        // wakes on this event already sees the new mark.
+        // wakes on this event already sees the new mark. Relay flips here,
+        // after that hold, so a template built on the event is not refused
+        // for a catch-up pool that tip-follow has not reached yet.
         drop(template_hold);
+        self.enable_relay_after_ibd();
         let event = TipEvent {
             height,
             hash,
