@@ -936,13 +936,16 @@ impl ChainHub {
         self.blocks_only.store(on, Ordering::Release);
     }
 
-    /// Turn tx relay on once the tip is recent and above the work floor.
+    /// Turn tx relay on when this connect is what leaves IBD.
     ///
     /// The tip-follow loop does this too, but it starts only after scripthash
-    /// materialize. Regtest `generate` runs during that wait. Call this after
-    /// the template hold is dropped so the purge can take the same mutex.
-    pub fn enable_relay_after_ibd(&self) {
-        if self.blocks_only.load(Ordering::Acquire) {
+    /// materialize. Regtest `generate` runs during that wait. `was_ibd` is
+    /// `in_ibd()` from before the block landed: a tip that was already fresh
+    /// keeps a paused relay (catch-up purge stays at tip-mode entry). Call
+    /// this after the template hold is dropped so the purge can take the
+    /// same mutex.
+    pub fn enable_relay_after_ibd(&self, was_ibd: bool) {
+        if !was_ibd || self.blocks_only.load(Ordering::Acquire) {
             return;
         }
         let Some(mp) = self.mempool() else {
@@ -3747,6 +3750,9 @@ impl ChainHub {
         // new query tip before the pool strip is recorded.
         let mp_hold = self.mempool().cloned();
         let mut template_hold = mp_hold.as_ref().map(|mp| mp.template_hold());
+        // Before the new tip exists. A later fresh block must not undo a
+        // relay pause that tip-follow already chose.
+        let was_ibd = self.in_ibd();
         let hash = block.block_hash();
         let header = block.header;
         tip_accept_stats_reset(&self.query);
@@ -3838,7 +3844,7 @@ impl ChainHub {
         // after that hold, so a template built on the event is not refused
         // for a catch-up pool that tip-follow has not reached yet.
         drop(template_hold);
-        self.enable_relay_after_ibd();
+        self.enable_relay_after_ibd(was_ibd);
         let event = TipEvent {
             height,
             hash,

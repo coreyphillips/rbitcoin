@@ -1228,6 +1228,33 @@ fn fresh_tip_accept_stays_quiet_when_blocks_only() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Relay paused after IBD has already ended stays paused. The catch-up
+/// purge runs when relay is turned on, not on the next block
+/// (`peer_blocksonly`).
+#[test]
+fn fresh_tip_does_not_reenable_relay_once_ibd_has_ended() {
+    let (dir, hub) = tmp_hub();
+    hub.ensure_genesis().unwrap();
+    let mp =
+        rbitcoin_net::tx_relay::MempoolHub::open(dir.path().join("mp"), Arc::clone(&hub.query))
+            .unwrap();
+    assert!(hub.attach_mempool(Arc::clone(&mp)).is_ok());
+    let gen = hub.tip_hash().unwrap();
+    let now = hub.clock.now_secs() as u32;
+    hub.accept_block(mine(gen, now, 1)).unwrap();
+    assert!(mp.relay_enabled());
+    mp.set_relay_enabled(false);
+    let tip = hub.tip_hash().unwrap();
+    hub.accept_block(mine(tip, now.saturating_add(1), 2))
+        .unwrap();
+    assert!(!hub.in_ibd());
+    assert!(
+        !mp.relay_enabled(),
+        "a fresh tip with relay already paused stays paused"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 #[test]
 fn feefilter_sat_kvb_is_min_relay_once_tip_is_fresh() {
     let (dir, hub) = tmp_hub();
