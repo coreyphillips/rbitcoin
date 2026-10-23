@@ -59,11 +59,11 @@ pub fn assemble_script(src: &str) -> Result<Vec<u8>, String> {
         // Using raw pushes for 1..16 would fail SCRIPT_VERIFY_MINIMALDATA.
         if let Ok(n) = tok.parse::<i64>() {
             if n == 0 {
-                out.push(0x00); // OP_0
+                out.push(0x00);
             } else if n == -1 {
-                out.push(0x4f); // OP_1NEGATE
+                out.push(0x4f);
             } else if (1..=16).contains(&n) {
-                out.push(0x50 + n as u8); // OP_1 .. OP_16
+                out.push(0x50 + n as u8);
             } else {
                 let enc = rbitcoin_primitives::scriptnum_encode(n);
                 crate::script::interpreter::encode_push(&mut out, &enc);

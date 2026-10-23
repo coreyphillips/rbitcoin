@@ -766,9 +766,9 @@ fn conf_keys_parse_and_error_paths() {
     assert!(cfg.listen.max_inbound_explicit);
     assert_eq!(cfg.mempool.max_weight, 50_000_000);
     assert_eq!(cfg.conf_log_level.as_deref(), Some("info"));
-    assert!(cfg.listen.use_seeds); // no_seeds=0 → seeds on
+    // `no_seeds=0` leaves seeding on.
+    assert!(cfg.listen.use_seeds);
 
-    // Error paths: bad listen / electrum / mempool 0 / empty log_level.
     for (body, needle) in [
         ("listen=not-an-addr\n", "listen"),
         ("electrum_listen=bad\n", "electrum"),
@@ -792,7 +792,6 @@ fn conf_keys_parse_and_error_paths() {
         );
     }
 
-    // ensure_datadir rejects a file path as datadir.
     let file_dd = dir.join("not-a-dir");
     std::fs::write(&file_dd, b"x").unwrap();
     let cfg_f = NodeConfig::default().with_datadir(&file_dd);
@@ -811,7 +810,6 @@ fn testactivationheight_csv_overlay_on_chain_params() {
     assert_eq!(p.csv_height(), 102);
     assert!(!p.csv_active_at(101));
     assert!(p.csv_active_at(102));
-    // Libre defaults when the flag is absent.
     let plain = NodeConfig::default();
     assert!(plain.mempool.persist);
     assert!(!plain.mempool.blocksonly);

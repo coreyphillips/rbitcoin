@@ -1188,7 +1188,7 @@ impl Query {
         Ok(plan)
     }
 
-    #[allow(clippy::too_many_arguments)] // IO/session args stay unbundled
+    #[allow(clippy::too_many_arguments)] // The call site keeps the IO and session arguments unbundled.
     #[doc(hidden)]
     pub fn finish_archive_plan(
         &self,

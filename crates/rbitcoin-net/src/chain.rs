@@ -4485,7 +4485,7 @@ pub fn initial_getheaders_log(locator_height: u32, peer: u64) -> String {
 /// Headers-sync timeout: 15 min + 1 ms per header-interval.
 pub fn headers_download_timeout_secs(now: u64, best_header_time: u64) -> u64 {
     let since = now.saturating_sub(best_header_time);
-    // ceil(1ms * since / 600s) in seconds == ceil(since / 600_000).
+    // One millisecond per 600 seconds, expressed in whole seconds, is `since` divided by 600_000 and rounded up.
     let variable = since.div_ceil(600_000);
     now.saturating_add(15 * 60).saturating_add(variable)
 }
@@ -4635,7 +4635,7 @@ pub fn log_tip_accept_sh(
         unique: w.sh_unique_n,
         written: w.sh_written_n,
     };
-    // class_c = strong + tip only (parallel SH is not Class C table time).
+    // Class C table time is the strong walk plus the tip walk. Parallel script-hash work is not included.
     let class_c_tables_ns = strong_ns.saturating_add(tip_ns);
     let line = format_tip_accept_sh_line(&TipAcceptShInput {
         height,

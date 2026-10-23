@@ -506,7 +506,7 @@ impl SharedParentPin {
         });
     }
 
-    #[allow(clippy::type_complexity)] // packed (fk, range) / span row is the on-disk shape
+    #[allow(clippy::type_complexity)] // The packed (fk, range) or span row is the on-disk shape.
     /// Single-snap apply for free-pin Occupied path: outs widen and/or layout
     /// merge from one outs load + one layout load (no double compose when no-op).
     #[doc(hidden)]
@@ -627,7 +627,7 @@ impl BatchParents {
         p.apply_meta_only(coinbase, body_range, &spender_rels);
     }
 
-    #[allow(clippy::too_many_arguments)] // IO/session args stay unbundled
+    #[allow(clippy::too_many_arguments)] // The call site keeps the IO and session arguments unbundled.
     /// Insert / merge one parent (prep pin hot path).
     ///
     /// Pure batch HashMap. Merge only if the same batch already holds a partial
@@ -992,7 +992,7 @@ impl BatchParents {
     }
 
     /// Unique `(create_id, vout, abs, spend_fk)` for spend edges. Missing abs is Corrupt.
-    #[allow(clippy::type_complexity)] // packed (id, vout, abs, spend_fk, vin)
+    #[allow(clippy::type_complexity)] // The packed row is (id, vout, abs, spend_fk, vin).
     pub fn spend_abs_jobs(
         &self,
         edges: impl IntoIterator<Item = (Fk, u32, Fk, u32)>,
@@ -1100,7 +1100,7 @@ impl BatchParents {
         }
     }
 
-    #[allow(clippy::type_complexity)] // packed (fk, range) / span row is the on-disk shape
+    #[allow(clippy::type_complexity)] // The packed (fk, range) or span row is the on-disk shape.
     pub fn get_parent_outs_needed(
         &self,
         fk: Fk,

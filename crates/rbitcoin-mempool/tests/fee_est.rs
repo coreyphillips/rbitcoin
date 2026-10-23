@@ -4,13 +4,12 @@ use rbitcoin_mempool::fee_est::*;
 fn capacity_is_n_times_block() {
     assert_eq!(capacity_wu(1), BLOCK_WEIGHT_WU);
     assert_eq!(capacity_wu(3), 3 * BLOCK_WEIGHT_WU);
-    assert_eq!(capacity_wu(0), BLOCK_WEIGHT_WU); // clamp
+    assert_eq!(capacity_wu(0), BLOCK_WEIGHT_WU); // zero is clamped up to one block
     assert_eq!(horizon_secs(2), 1200);
 }
 
 #[test]
 fn zero_inflow_equals_frontier_depth() {
-    // stock_above: 2e6 WU above any rate < 1000, 0 above ≥1000
     let stock = |r: u64| if r < 1000 { 2_000_000 } else { 0 };
     let inflow = vec![0u64; bucket_count()];
     let rates = default_candidate_rates();
@@ -18,7 +17,6 @@ fn zero_inflow_equals_frontier_depth() {
     // Need stock_above(R) ≤ 0.95 * 4e6 → 2e6 always ok; minimum R on ladder that
     // still has load ≤ cap. All rates with stock 2e6 fit; min is lowest edge.
     assert_eq!(r, rates[0]);
-    // Deeper N still fits at lowest.
     let r2 = min_rate_for_capacity(stock, &inflow, 5, &rates).unwrap();
     assert!(r2 <= r);
 }
@@ -27,10 +25,9 @@ fn zero_inflow_equals_frontier_depth() {
 fn high_bucket_inflow_raises_rate() {
     let stock = |_r: u64| 0u64;
     let mut inflow = vec![0u64; bucket_count()];
-    // Massive inflow in high-rate buckets (index for 50k+).
     let hi = bucket_index(50_000);
     let floor = FEE_BUCKET_EDGES_SAT_PER_KVB[hi];
-    inflow[hi] = 50_000; // WU/s → over 600s = 30e6 WU >> 4e6
+    inflow[hi] = 50_000; // 50_000 WU/s over 600s is 30e6 WU, far above 4e6
     let rates = default_candidate_rates();
     let cold = min_rate_for_capacity(stock, &vec![0u64; bucket_count()], 1, &rates).unwrap();
     let hot = min_rate_for_capacity(stock, &inflow, 1, &rates).unwrap();
@@ -45,7 +42,7 @@ fn high_bucket_inflow_raises_rate() {
 fn monotone_in_target_blocks() {
     let stock = |r: u64| if r < 5_000 { 3_500_000 } else { 0 };
     let mut inflow = vec![0u64; bucket_count()];
-    inflow[bucket_index(1_000)] = 1_000; // modest
+    inflow[bucket_index(1_000)] = 1_000;
     let rates = default_candidate_rates();
     let r1 = min_rate_for_capacity(stock, &inflow, 1, &rates).unwrap();
     let r3 = min_rate_for_capacity(stock, &inflow, 3, &rates).unwrap();
@@ -198,7 +195,7 @@ fn published_rate_is_cold_at_zero_and_warm_at_full() {
 
 #[test]
 fn warm_flow_drives_near_targets_without_a_history_floor() {
-    // 1 block: flow alone, even far under history
+    // At one block the quote is the flow rate alone, even when that rate is far under history.
     assert_eq!(
         depth_rate_sat_kvb(1, true, Some(1_000), None, Some(9_000)),
         Some(1_000)
@@ -207,7 +204,7 @@ fn warm_flow_drives_near_targets_without_a_history_floor() {
         depth_rate_sat_kvb(1, true, None, None, Some(9_000)),
         Some(9_000)
     );
-    // 2 blocks: a blend, pulled mostly toward flow
+    // At two blocks the quote is a blend, pulled mostly toward the flow rate.
     let r2 = depth_rate_sat_kvb(2, true, Some(1_000), Some(1_000), Some(9_000)).unwrap();
     assert!(r2 > 1_000 && r2 < 3_000, "{r2}");
     let r2 = depth_rate_sat_kvb(2, true, Some(9_000), Some(9_000), Some(1_000)).unwrap();

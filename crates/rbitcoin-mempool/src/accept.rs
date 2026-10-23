@@ -365,7 +365,8 @@ pub fn check_mempool_structural(
                     prev_mtps.push(c.create_mtp);
                 }
                 None => {
-                    // Mempool parent: treat as created at next_height (unconfirmed).
+                    // A mempool parent is unconfirmed, so its create height is the
+                    // next block.
                     prev_heights.push(next_height);
                     prev_mtps.push(tip.mtp);
                 }
@@ -1981,7 +1982,7 @@ impl ActiveMempool {
                                 self.park_announced(&item.tx, missing, &item.announcers);
                             }
                             Err(_) => {
-                                // Rejected without a repark. Drop the lift row.
+                                // This rejection does not park the transaction again.
                                 self.orphanage.forget_taken_gen(&id, item.taken_gen);
                                 self.restore_undone(utxos, tip);
                             }

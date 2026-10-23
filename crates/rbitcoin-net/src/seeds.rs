@@ -285,7 +285,7 @@ impl PeerFlags {
             self.insert(Self::SLOW);
             self.remove(Self::FAST);
         }
-        // else: mid-range — leave prior classification
+        // A sample between the fast and slow cutoffs leaves the earlier classification.
     }
 }
 
@@ -942,7 +942,7 @@ impl AddrMan {
             am.remember(addr, PeerFlags(flags_u));
         }
         if !saw_magic && am.is_empty() {
-            // Empty or comment-only without magic — treat as empty book.
+            // No magic line and no peers, including a comment-only file, is an empty book.
             return Ok(Self::new());
         }
         am.trim_to_cap(MAX_ADDR_MAN);

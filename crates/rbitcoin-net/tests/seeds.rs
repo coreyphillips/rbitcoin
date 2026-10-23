@@ -121,7 +121,8 @@ fn addr_n(i: u32) -> SocketAddr {
 
 #[test]
 fn dial_tier_preferred_vs_last_resort() {
-    assert_eq!(PeerFlags::empty().dial_tier(), 0); // untried
+    // Empty flags have never been dialed, so the tier is preferred (0).
+    assert_eq!(PeerFlags::empty().dial_tier(), 0);
     let mut f = PeerFlags::empty();
     f.insert(PeerFlags::HAS_CONNECTED);
     assert_eq!(f.dial_tier(), 0);
@@ -555,7 +556,7 @@ fn peers_file_roundtrip_preserves_flags() {
     assert!(loaded.flags(&a).is_fast());
     assert!(loaded.flags(&b).is_incompatible());
 
-    // merge does not wipe flags when re-adding seed
+    // Re-adding a seed through merge does not wipe the flags already stored.
     let mut merged = loaded;
     merged.add(a);
     assert!(merged.flags(&a).is_fast());
@@ -630,7 +631,7 @@ fn network_ports_and_seed_lists() {
     assert!(!fixed_seed_hosts(Network::Testnet).is_empty());
     assert!(!fixed_seed_hosts(Network::Signet).is_empty());
     assert!(fixed_seed_hosts(Network::Regtest).is_empty());
-    // Regtest has no seeds → resolve paths stay empty (no network I/O).
+    // Regtest has no seeds, so the resolve paths stay empty and do no network I/O.
     assert!(resolve_dns_seeds(Network::Regtest).is_empty());
     assert!(resolve_fixed_seeds(Network::Regtest).is_empty());
     assert!(resolve_all_seeds(Network::Regtest).is_empty());
@@ -700,7 +701,7 @@ fn apply_ibd_dead_speed_outlier_mid_range_does_not_restore_fast() {
         PeerFlags::FAST_BPS_MIN + 100,
     );
     assert!(am.flags(&a).is_fast());
-    // Relative-slow kick sample is often 150–500 KB/s (above SLOW_BPS_MAX).
+    // A relative-slow kick sample is often 150–500 KB/s, which is above `SLOW_BPS_MAX`.
     am.apply_ibd_dead_speed_addr(
         rbitcoin_net::NetAddr::from_socket(a),
         150,
@@ -744,7 +745,8 @@ fn addrman_merge_offset_and_ipv4_sort() {
     let mut a = AddrMan::new();
     a.add(v6);
     a.add(v4);
-    a.inject([v6, v4]); // already present no-op + re-sort
+    // Injecting addresses that are already present does not add them again, and it re-sorts.
+    a.inject([v6, v4]);
     assert_eq!(a.peers()[0], v4, "IPv4 preferred over IPv6");
 
     let mut b = AddrMan::new();
@@ -760,7 +762,6 @@ fn addrman_merge_offset_and_ipv4_sort() {
         .is_some());
     assert!(!a.is_empty());
 
-    // Ranked outbound + offset wrap.
     let ranked = a.take_dial_candidates(2, &HashSet::new(), &[]);
     assert_eq!(ranked.len(), 2);
     let offset = a.take_outbound_offset_occupied(3, 1, &[]);
@@ -783,17 +784,14 @@ fn peers_file_load_errors_and_empty() {
     let missing = dir.join("no-such-peers");
     assert!(AddrMan::load(&missing).unwrap().is_empty());
 
-    // Bad magic.
     let bad = dir.join("bad");
     std::fs::write(&bad, "not-magic\n1.2.3.4:8333 0\n").unwrap();
     assert!(AddrMan::load(&bad).is_err());
 
-    // Comment-only / empty after trim → empty book.
     let emptyish = dir.join("emptyish");
     std::fs::write(&emptyish, "# just a comment\n\n").unwrap();
     assert!(AddrMan::load(&emptyish).unwrap().is_empty());
 
-    // Hex + decimal flags parse.
     let ok = dir.join("ok");
     std::fs::write(
         &ok,
@@ -808,10 +806,11 @@ fn peers_file_load_errors_and_empty() {
     let loaded = AddrMan::load(&ok).unwrap();
     assert_eq!(loaded.len(), 2);
     assert!(loaded.flags(&addr(1)).has_connected());
-    assert!(loaded.flags(&addr(1)).is_fast()); // bits 0|1
-    assert!(loaded.flags(&addr(2)).failed_last_connect()); // bit 4 = 16
+    // 0x03 is the connected bit and the fast bit.
+    assert!(loaded.flags(&addr(1)).is_fast());
+    // 16 is bit 4, the failed-last-connect flag.
+    assert!(loaded.flags(&addr(2)).failed_last_connect());
 
-    // Bad address token.
     let bad_addr = dir.join("bad-addr");
     std::fs::write(
         &bad_addr,
@@ -820,7 +819,6 @@ fn peers_file_load_errors_and_empty() {
     .unwrap();
     assert!(AddrMan::load(&bad_addr).is_err());
 
-    // Bad hex flags.
     let bad_hex = dir.join("bad-hex");
     std::fs::write(
         &bad_hex,
@@ -829,7 +827,6 @@ fn peers_file_load_errors_and_empty() {
     .unwrap();
     assert!(AddrMan::load(&bad_hex).is_err());
 
-    // Bad decimal flags + 0X uppercase hex prefix path.
     let bad_dec = dir.join("bad-dec");
     std::fs::write(
         &bad_dec,

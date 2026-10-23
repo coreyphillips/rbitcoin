@@ -11,7 +11,7 @@ use rbitcoin_store::{
     IdxBodyJob, IdxBodyMode, Store, StoreError, StoreSecret,
 };
 
-#[allow(clippy::type_complexity)] // packed (fk, range) / span row is the on-disk shape
+#[allow(clippy::type_complexity)] // The packed (fk, range) or span row is the on-disk shape.
 /// One create loaded for the combined path.
 #[derive(Debug, Clone)]
 pub struct CombinedCreate {

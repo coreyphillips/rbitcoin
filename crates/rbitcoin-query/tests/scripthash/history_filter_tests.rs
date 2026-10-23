@@ -57,10 +57,9 @@ fn newest_first_order() {
 
 #[test]
 fn after_txid_skips_through_cursor_then_limit() {
-    // Newest first: h=30,20,10 with distinct txids
     let items = vec![item(10, 1), item(20, 2), item(30, 3)];
     let mut after = [0u8; 32];
-    after[0] = 3; // tip (height 30)
+    after[0] = 3; // The cursor txid is the one at height 30, the tip.
     let f = HistoryFilter {
         from_height: 0,
         to_height: None,

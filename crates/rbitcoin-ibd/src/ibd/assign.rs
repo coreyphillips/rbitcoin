@@ -278,7 +278,7 @@ pub fn assign_work_ordered(
     };
     let tip_batch_hi = path_lo.saturating_add(TIP_HOLE_MAX.saturating_sub(1) as u32);
 
-    // Stale pending in tip batch only → re-get (don't thrash far pending).
+    // Only stale pending in the tip batch is fetched again, so far pending is not thrashed.
     let tip_expired = st.body.expire_stale_pending_if(PENDING_STALE, |h| {
         st.hash_height
             .get(h)
@@ -678,7 +678,7 @@ pub fn need_hash_at(
     if !densify_issue_allowed(room, st.inflight.get(&h)) {
         return None;
     }
-    // Class A seed: densify skips re-walk; tip-hole cover re-gets tip batch.
+    // A Class A seed is not re-walked by densify. Tip-hole cover fetches the tip batch again.
     if st.body.is_known_archived(&h) {
         return None;
     }
@@ -1098,7 +1098,7 @@ pub fn fifo_blocked_owner_to_drop(
             let held_long = req
                 .owner_asked_at(id)
                 .is_some_and(|t| now.duration_since(t) >= TIP_HOLE_FIFO_MIN_HOLD);
-            // free wait <= owner wait / FASTER, cross-multiplied as in tip_hole_drain_cmp.
+            // Free wait is at most the owner wait divided by FASTER, cross-multiplied the same way as tip_hole_drain_cmp.
             let free_wait = (free_q as u128 + 1)
                 .saturating_mul(TIP_HOLE_FIFO_FASTER)
                 .saturating_mul(u128::from(peer_bps(slots, id).max(1)));

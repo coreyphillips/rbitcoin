@@ -123,7 +123,6 @@ macro_rules! confirm_window {
 }
 
 confirm_window! {
-    // lookup / load / scripts / write (isolation pin)
     load_ns,
     script_ns,
     milestone_gate_ns,
@@ -186,7 +185,6 @@ confirm_window! {
     phase_prep_prepare_ns,
     phase_prep_filter_plan_ns,
     phase_blocks,
-    // load pin
     load_win_ns,
     load_blocks,
     utxo_parents,
@@ -210,7 +208,7 @@ confirm_window! {
     body_tx_reads,
     thin_ns,
     parent_pin_ns,
-    // class C / SH
+    // These counters are the Class C strong phase and the scripthash phase.
     strong_ns,
     scripthash_ns,
     tip_ns,
@@ -224,10 +222,9 @@ confirm_window! {
     sh_create_n,
     sh_unique_n,
     sh_written_n,
-    // SH table sync before a durable include_hwm advance (write-behind)
+    // The scripthash table is synced before a durable include_hwm advance on the write-behind path.
     sh_sync_n,
     sh_sync_ns,
-    // archive prep/write
     arch_blocks,
     ext_need,
     head_need,
@@ -262,7 +259,6 @@ confirm_window! {
     arch_write_txstat_ns,
     arch_write_flush_ns,
     arch_write_blocks,
-    // lookup wave
     lookup_blocks,
     lookup_parents,
     lookup_already,
@@ -276,7 +272,6 @@ confirm_window! {
     lookup_precompute_ns,
     lookup_wave_head_ns,
     lookup_wave_spent_ns,
-    // plan stamp sub
     stamp_struct_ns,
     stamp_struct_txid_ns,
     stamp_struct_wtxid_ns,
@@ -284,10 +279,10 @@ confirm_window! {
     stamp_prepare_ns,
     stamp_filter_ns,
     stamp_batch_ns,
-    // wire reconstruct
+    // These counters are wire reconstruction of a stored body.
     wf_body_store,
     wf_body_store_ns,
-    // IBD OS-thread occupancy
+    // These counters are IBD OS-thread occupancy.
     thr_lookup_claim_ns,
     thr_lookup_stamp_ns,
     thr_lookup_other_ns,
@@ -467,7 +462,7 @@ impl ConfirmStats {
         add(&self.arch_prep_finish_ns, finish_ns);
     }
 
-    #[allow(clippy::too_many_arguments)] // IO/session args stay unbundled
+    #[allow(clippy::too_many_arguments)] // The call site keeps the IO and session arguments unbundled.
     pub fn note_write_commit(
         &self,
         total_ns: u64,

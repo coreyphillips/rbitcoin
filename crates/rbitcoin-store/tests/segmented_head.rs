@@ -252,7 +252,7 @@ fn insert_roll_seal_lookup_roundtrip() {
     let h = SegmentedTxHead::create(&dir, layout).unwrap();
     assert_eq!(h.max_keys, 819);
 
-    let n = 820u64; // forces a roll (max_keys=819)
+    let n = 820u64; // 820 keys forces a roll because max_keys is 819.
     let mut entries = Vec::with_capacity(n as usize);
     for i in 0..n {
         entries.push((mixed(i + 1), Fk(i + 1)));
@@ -267,7 +267,6 @@ fn insert_roll_seal_lookup_roundtrip() {
         "seal publish must map fuse, not keep the build Box"
     );
 
-    // Known members resolve (as candidates).
     for i in [1u64, 400, 819, 820] {
         let cands = h.probe_candidates(&mixed(i)).unwrap();
         assert!(
@@ -275,7 +274,6 @@ fn insert_roll_seal_lookup_roundtrip() {
             "missing fk={i} cands={cands:?}"
         );
     }
-    // Global miss.
     let miss = h.probe_candidates(&mixed(0xDEAD_BEEF)).unwrap();
     assert!(miss.is_empty() || !miss.iter().any(|f| f.0 == 0xDEAD_BEEF));
 
@@ -424,7 +422,7 @@ fn open_discards_leftover_oa_for_sealed_segment() {
 fn v1_fuse_and_mono_head_refuse_open() {
     let dir = tmp();
     let layout = HeadLayout::new(10).unwrap();
-    // 0.8 * 1024 = 819 → seal at 820.
+    // The seal load is 0.8 times 1024 slots, so 820 keys seals the segment.
     let n = 820u64;
     {
         let h = SegmentedTxHead::create(&dir, layout).unwrap();

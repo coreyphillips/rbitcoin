@@ -600,7 +600,7 @@ impl ScriptOkBatch {
         Ok(self.wire_blocks.iter().map(|b| b.header).collect())
     }
 
-    #[allow(clippy::result_large_err)] // public error enum
+    #[allow(clippy::result_large_err)] // This is the public error enum, so the large error type stays.
     /// Absorb another script-ok batch for write batch (FIFO drain).
     ///
     /// Scripts enqueue height-ordered tip extensions; write drains the channel

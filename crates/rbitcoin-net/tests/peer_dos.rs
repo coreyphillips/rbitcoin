@@ -90,7 +90,7 @@ fn rate_limiter_window_resets() {
 
 #[test]
 fn max_inbound_env_default() {
-    // Do not mutate env in parallel tests; just check parse of default path.
+    // Do not mutate the environment in parallel tests. This only checks the default-path parse.
     const {
         assert!(DEFAULT_MAX_INBOUND >= 1);
     }

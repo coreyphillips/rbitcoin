@@ -11,7 +11,7 @@ use rbitcoin_consensus::signet::*;
 fn default_challenge_parses() {
     let c = default_signet_challenge();
     assert!(c.as_bytes().len() > 70);
-    assert_eq!(c.as_bytes()[0], 0x51); // OP_1
+    assert_eq!(c.as_bytes()[0], 0x51); // 0x51 is OP_1
 }
 
 #[test]
@@ -24,13 +24,13 @@ fn extract_signet_header_payload() {
 
 #[test]
 fn fetch_and_clear_rewrites_push() {
-    // OP_RETURN + push(header||0xab)
+    // The script is OP_RETURN plus a push of the signet header and 0xab.
     let mut spk = vec![0x6a, 0x05];
     spk.extend_from_slice(&SIGNET_HEADER);
     spk.push(0xab);
     let (sol, stripped) = fetch_and_clear_signet_section(&spk).unwrap();
     assert_eq!(sol, vec![0xab]);
-    // stripped should still start with OP_RETURN
+    // Stripping the solution leaves the OP_RETURN in place.
     assert_eq!(stripped[0], 0x6a);
 }
 
@@ -217,7 +217,7 @@ fn push_data_all_length_encodings() {
 
 #[test]
 fn fetch_and_clear_pushdata1_and_pushdata2() {
-    // OP_RETURN + PUSHDATA1(header||payload)
+    // The script is OP_RETURN plus an OP_PUSHDATA1 of the header and payload.
     let mut payload = SIGNET_HEADER.to_vec();
     payload.extend_from_slice(&[0xde, 0xad]);
     let mut spk = vec![0x6a, 0x4c, payload.len() as u8];
@@ -226,7 +226,7 @@ fn fetch_and_clear_pushdata1_and_pushdata2() {
     assert_eq!(sol, vec![0xde, 0xad]);
     assert_eq!(stripped[0], 0x6a);
 
-    // PUSHDATA2 path
+    // This script uses OP_PUSHDATA2 for the header and payload.
     let mut payload2 = SIGNET_HEADER.to_vec();
     payload2.push(0xbe);
     let mut spk2 = vec![0x6a, 0x4d];
@@ -240,31 +240,31 @@ fn fetch_and_clear_pushdata1_and_pushdata2() {
     assert_eq!(sol2, vec![0xbe]);
     assert!(repl2.ends_with(&[0x51]), "{repl2:?}");
 
-    // Truncated push → None
+    // These pushes claim more bytes than the script contains.
     assert!(fetch_and_clear_signet_section(&[0x05, 0x01]).is_none());
     assert!(fetch_and_clear_signet_section(&[0x4c, 0x05, 0x01]).is_none());
     assert!(fetch_and_clear_signet_section(&[0x4d, 0x05, 0x00, 0x01]).is_none());
-    // OP_0 pass-through without solution
+    // OP_0 is not a signet solution.
     assert!(fetch_and_clear_signet_section(&[0x00, 0x51]).is_none());
-    // Non-header push retained
+    // A push that does not start with the signet header is not a solution.
     let no_hdr = vec![0x03, 0xaa, 0xbb, 0xcc];
     assert!(fetch_and_clear_signet_section(&no_hdr).is_none());
     let _ = no_hdr;
 }
 
 #[test]
-#[allow(clippy::cognitive_complexity)] // one parser, many length boundaries
+#[allow(clippy::cognitive_complexity)] // this allow covers one parser and many length boundaries
 fn compact_size_and_solution_parse_errors() {
     use rbitcoin_primitives::read_compact_size_from;
     assert_eq!(read_compact_size_from(&mut (&[0u8][..])).unwrap(), 0);
     assert_eq!(read_compact_size_from(&mut (&[252u8][..])).unwrap(), 252);
-    // 253 + u16 LE
+    // Tag 253 is followed by a little-endian u16.
     let mut r = &[253u8, 0x01, 0x00][..];
     assert_eq!(read_compact_size_from(&mut r).unwrap(), 1);
-    // 254 + u32
+    // Tag 254 is followed by a little-endian u32.
     let mut r = &[254u8, 0x02, 0x00, 0x00, 0x00][..];
     assert_eq!(read_compact_size_from(&mut r).unwrap(), 2);
-    // 255 + u64
+    // Tag 255 is followed by a little-endian u64.
     let mut r = &[255u8, 0x03, 0, 0, 0, 0, 0, 0, 0][..];
     assert_eq!(read_compact_size_from(&mut r).unwrap(), 3);
 
@@ -288,13 +288,13 @@ fn compact_size_and_solution_parse_errors() {
     let (ss, wit) = parse_signet_solution(&[0x00, 0x00]).unwrap();
     assert!(ss.is_empty());
     assert_eq!(wit.len(), 0);
-    // Truncated CompactSize in the solution.
+    // The solution starts a 3-byte compact size and then ends.
     assert!(parse_signet_solution(&[253]).is_err());
-    // Extraneous tail.
+    // A byte after a complete empty solution is an extraneous tail.
     assert!(parse_signet_solution(&[0x00, 0x00, 0xff]).is_err());
-    // Short script.
+    // The script claims two bytes and only one follows.
     assert!(parse_signet_solution(&[0x02, 0xaa]).is_err());
-    // Short witness item.
+    // The witness item claims two bytes and only one follows.
     assert!(parse_signet_solution(&[0x00, 0x01, 0x02, 0xaa]).is_err());
     // Non-minimal witness count 0 (253, 0x0000).
     let err = parse_signet_solution(&[0x00, 253, 0x00, 0x00]).unwrap_err();
@@ -398,7 +398,7 @@ fn modified_merkle_odd_leaf_count() {
     if block.txdata.len() > 1 {
         assert_ne!(root.to_byte_array(), cb.compute_txid().to_byte_array());
     }
-    // Odd: only coinbase
+    // Only the coinbase remains, so the merkle leaf count is odd.
     let solo = Block {
         header: block.header,
         txdata: vec![cb.clone()],
@@ -515,7 +515,7 @@ fn push_data_mid_and_unknown_op_passthrough() {
     assert_eq!(u16::from_le_bytes([out[1], out[2]]), 300);
     // Truncated PUSHDATA4 stops the scan (no solution).
     assert!(fetch_and_clear_signet_section(&[0x4e, 0x05, 0x00, 0x00, 0x00, 0x01]).is_none());
-    // OP_RETURN + OP_TRUE: no signet header → None.
+    // OP_RETURN followed by OP_TRUE has no signet header.
     assert!(fetch_and_clear_signet_section(&[0x6a, 0x51]).is_none());
 }
 
@@ -524,7 +524,7 @@ fn modified_merkle_three_leaves() {
     let raw = include_bytes!("../tests/fixtures/signet_block_1.bin");
     let block: Block = deserialize(raw).unwrap();
     let cb = block.txdata[0].clone();
-    // Build block with coinbase + 2 dummy non-cb (odd non-cb count after strip).
+    // The block is a coinbase plus two non-coinbase transactions. Stripping commitment outputs leaves an odd non-coinbase count.
     let dummy = |n: u8| Transaction {
         version: bitcoin::transaction::Version::ONE,
         lock_time: LockTime::ZERO,

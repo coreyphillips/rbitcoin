@@ -240,7 +240,7 @@ impl IocpEngine {
             };
             self.ready.push_back((boxed.user_data, res));
             if timeout_ms == 0 {
-                // drain ready without blocking again
+                // A zero timeout keeps taking completions that are already queued, and does not wait again.
                 continue;
             }
             return;

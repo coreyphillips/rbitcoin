@@ -131,7 +131,7 @@ impl TipSeal {
         let mut buf = [0u8; Self::BYTES];
         buf[0..4].copy_from_slice(&STORE_MAGIC);
         buf[4..6].copy_from_slice(&SCHEMA_VERSION.to_le_bytes());
-        // 6..8 reserved
+        // Bytes 6 and 7 are reserved and stay zero.
         buf[8..12].copy_from_slice(&self.tip_height.to_le_bytes());
         buf[12..20].copy_from_slice(&self.confirmed_len.to_le_bytes());
         buf[20..28].copy_from_slice(&self.generation.to_le_bytes());
@@ -258,7 +258,6 @@ impl Store {
                     if let Some(fk) = self.confirmed.get(tip)? {
                         if let Ok(rec) = self.headers.get(fk) {
                             if rec.hash != seal.tip_hash {
-                                // Tip hash disagrees with seal — drop tip block.
                                 let lg = tip.0.checked_sub(1);
                                 self.shrink_tip_to(lg, &mut report)?;
                             }

@@ -343,7 +343,7 @@ impl Mempool {
     ///
     /// Returns the slot index. RAM is updated immediately; sidecar write waits
     /// for [`Self::persist_due`].
-    #[allow(clippy::too_many_arguments)] // one arg per packed-record field
+    #[allow(clippy::too_many_arguments)] // each argument is one field of the packed record
     pub fn append_live_tx(
         &mut self,
         tx: &Transaction,

@@ -1378,7 +1378,7 @@ impl MempoolHub {
         let entry = RecentAccept {
             txid: r.txid,
             fee_sat: r.fee_sat,
-            // Raw: Esplora `/mempool/recent` vsize is electrs `tx.vsize()`.
+            // Esplora `/mempool/recent` reports electrs `tx.vsize()`, which is this raw weight, not a sigop-adjusted size.
             weight: tx.weight().to_wu(),
             value_sat,
         };

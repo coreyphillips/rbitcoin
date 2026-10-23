@@ -168,7 +168,6 @@ fn slot_sorted_batch_matches_sequential_inserts() {
     for (key, fk) in &batch {
         assert_eq!(h.get(key).unwrap(), Some(*fk));
     }
-    // Overwrite subset
     let mut upd = Vec::new();
     for i in 0u64..50 {
         let mut key = [0u8; 32];
@@ -204,12 +203,11 @@ fn prefix_collision_multi_list() {
     k2[16] = 2;
     h.insert(&k1, Fk(10)).unwrap();
     h.insert(&k2, Fk(20)).unwrap();
-    assert_eq!(h.occupied(), 1); // one prefix slot
+    assert_eq!(h.occupied(), 1);
     let all1 = h.get_all(&k1).unwrap();
     let all2 = h.get_all(&k2).unwrap();
     assert_eq!(all1, all2);
     assert!(all1.contains(&Fk(10)) && all1.contains(&Fk(20)));
-    // Newest first
     assert_eq!(all1[0], Fk(20));
     assert_eq!(h.get(&k1).unwrap(), Some(Fk(20)));
     cleanup_hh(&path);
@@ -221,11 +219,10 @@ fn bip30_same_full_key_multi() {
     let h = HashHead::create_with_slots(&path, DEFAULT_SLOTS).unwrap();
     let key = [0x42u8; 32];
     h.insert(&key, Fk(1)).unwrap();
-    h.insert(&key, Fk(2)).unwrap(); // same txid, second Class A row
+    h.insert(&key, Fk(2)).unwrap();
     let all = h.get_all(&key).unwrap();
     assert_eq!(all, vec![Fk(2), Fk(1)]);
     assert_eq!(h.occupied(), 1);
-    // Idempotent re-insert of existing fk
     h.insert(&key, Fk(2)).unwrap();
     assert_eq!(h.get_all(&key).unwrap(), vec![Fk(2), Fk(1)]);
     h.flush().unwrap();
@@ -348,7 +345,6 @@ fn hashhead_empty_insert_get_miss_flush_and_reopen_multi() {
     h.insert_many(&[]).unwrap();
     assert!(h.get(&[0u8; 32]).unwrap().is_none());
     assert!(h.get_all(&[0u8; 32]).unwrap().is_empty());
-    // multi chain walk
     let key = [0x55u8; 32];
     h.insert(&key, Fk(1)).unwrap();
     h.insert(&key, Fk(2)).unwrap();
@@ -360,7 +356,6 @@ fn hashhead_empty_insert_get_miss_flush_and_reopen_multi() {
     drop(h);
     let h = HashHead::open(&path).unwrap();
     assert_eq!(h.get_all(&key).unwrap(), vec![Fk(3), Fk(2), Fk(1)]);
-    // multi-list sibling file exists after multi inserts
     let mut mlt = path.as_os_str().to_os_string();
     mlt.push(".mlt");
     assert!(std::path::PathBuf::from(mlt).exists());

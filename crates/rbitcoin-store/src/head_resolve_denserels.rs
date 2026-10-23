@@ -451,7 +451,7 @@ pub fn unfinished_mask(
         .collect()
 }
 
-#[allow(clippy::too_many_arguments)] // IO/session args stay unbundled
+#[allow(clippy::too_many_arguments)] // The IO and session arguments stay unbundled.
 /// Sidefile ID (at most two page-grouped shots) then BIP30 match.
 ///
 /// Shot A is the first four cands of unfinished keys; shot B is the rest only

@@ -143,8 +143,8 @@ mod tests {
 
     #[test]
     fn witness_without_p2sh_bit_does_not_abort() {
-        // Nightly crash-047863e3: flags 0x7a (WITNESS on, P2SH bit off).
-        // libbitcoinconsensus asserts SCRIPT_VERIFY_P2SH when WITNESS is set.
+        // Nightly crash-047863e3 used flags 0x7a (WITNESS on, P2SH bit off),
+        // and libbitcoinconsensus asserts SCRIPT_VERIFY_P2SH whenever WITNESS is set.
         let (sig, pk, f) = parse_kernel_input(&[0x7a, 0x51]).unwrap();
         assert_eq!(f, 0x7a);
         assert!(sig.is_empty());

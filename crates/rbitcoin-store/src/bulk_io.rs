@@ -56,7 +56,7 @@ pub struct WriteOp<'a> {
 }
 
 #[doc(hidden)]
-pub static URING_MODE: AtomicU8 = AtomicU8::new(0); // 0 unknown, 1 on, 2 off
+pub static URING_MODE: AtomicU8 = AtomicU8::new(0); // 0 is unknown, 1 means the ring is on, and 2 means it is off.
 #[doc(hidden)]
 pub static WORKERS: AtomicUsize = AtomicUsize::new(0);
 #[doc(hidden)]
@@ -131,7 +131,7 @@ pub fn resolved_session_kind() -> crate::uring_session::SessionKind {
         Some(IoToken::Pool) => SessionKind::Pool,
         Some(IoToken::Iocp) => SessionKind::Iocp,
         Some(IoToken::Uring) => SessionKind::Uring,
-        Some(IoToken::Pread) => SessionKind::Pool, // unused: gate is off
+        Some(IoToken::Pread) => SessionKind::Pool, // Unused: a pread token means the session gate is already off.
         None => default_session_kind(),
     }
 }
@@ -415,7 +415,7 @@ pub fn pread_batch_on_session_inner(
 
     for op in ops.iter_mut() {
         if !op.buf.is_empty() && op.result == i32::MIN {
-            op.result = -5; // EIO
+            op.result = -5; // Errno 5 is EIO.
         }
     }
     if session.drain_all().is_err() {

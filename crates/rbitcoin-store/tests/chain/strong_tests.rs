@@ -150,7 +150,7 @@ fn strong_write_behind_no_flush_keeps_old() {
         t.set_strong_range(Fk(1), 8, Fk(1)).unwrap();
         t.flush().unwrap();
         t.set_strong(Fk(9), Fk(1)).unwrap();
-        // Drop without flush.
+        // The table is dropped here without a flush, so only the flushed bits survive reopen.
     }
     let t = StrongTxTable::open(&dir).unwrap();
     assert!(t.is_strong(Fk(1)).unwrap());
@@ -225,17 +225,16 @@ fn strong_partial_bytes_unstrong_range_and_errors() {
         assert!(t.is_strong(Fk(i)).unwrap(), "i={i}");
     }
     assert!(!t.is_strong(Fk(2)).unwrap());
-    // count==0 no-op
     t.set_strong_range(Fk(1), 0, Fk(1)).unwrap();
     t.set_unstrong_range(Fk(1), 0).unwrap();
-    // Clear a mid-range with partial ends.
+    // Clearing from fk 5 for 10 bits starts and ends in the middle of a byte.
     t.set_unstrong_range(Fk(5), 10).unwrap();
     for i in 5..15 {
         assert!(!t.is_strong(Fk(i)).unwrap());
     }
     assert!(t.is_strong(Fk(4)).unwrap());
     assert!(t.is_strong(Fk(15)).unwrap());
-    // past allocated → no-op
+    // An fk past the allocated bit image is a no-op.
     t.set_unstrong(Fk(9999)).unwrap();
     t.set_unstrong_range(Fk(9000), 10).unwrap();
     assert!(matches!(

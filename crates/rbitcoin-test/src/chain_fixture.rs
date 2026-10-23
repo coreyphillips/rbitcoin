@@ -134,7 +134,7 @@ fn mine_mature_regtest_with_spend(query: &Query, params: &ChainParams) -> Mature
 
     // Pad until height-1 has `maturity` confirmations → spendable at height `1 + maturity`.
     // After connecting height H, confs of h1 = H - 1. Need H - 1 >= maturity ⇒ H >= maturity + 1.
-    let last_pad = maturity + 1; // inclusive; at this height spend is allowed for next block
+    let last_pad = maturity + 1;
     for h in 2..=last_pad {
         let b = mine_regtest_block(tip, tip_time + 600, h, vec![]);
         accept_and_connect_block(query, params, Height(h), &b, ms).unwrap();

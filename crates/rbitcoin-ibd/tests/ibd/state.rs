@@ -15,7 +15,7 @@ fn inflight_req_multi_peer_add_remove() {
     assert_eq!(r.len(), 1);
     assert!(r.peers.contains(&1));
     assert!(r.add_peer(2));
-    assert!(!r.add_peer(2)); // already present
+    assert!(!r.add_peer(2)); // Peer 2 is already in the set.
     assert_eq!(r.len(), 2);
     assert!(!r.remove_peer(1));
     assert_eq!(r.len(), 1);
@@ -80,7 +80,6 @@ fn record_height_structure_sizes_and_hygiene() {
     assert_eq!(st.hash_height.get(&tip), Some(&10));
     assert_eq!(st.height_to_hash.get(&10), Some(&tip));
 
-    // Height change removes stale inverse.
     st.record_height(tip, 11);
     assert!(!st.height_to_hash.contains_key(&10));
     assert_eq!(st.height_to_hash.get(&11), Some(&tip));
@@ -114,7 +113,6 @@ fn record_height_structure_sizes_and_hygiene() {
     assert_eq!(sizes.inflight, 0);
     assert_eq!(sizes.peer_inflight, 0);
 
-    // Inflight keeps auxiliary keys across hygiene.
     let keep = h(200);
     st.inflight.insert(keep, InflightReq::new(0));
     st.record_height(keep, 999);
@@ -179,7 +177,7 @@ fn inflight_default_and_known_headers_hygiene_prune() {
     // Keep tip on the live ordered path so prune retain keeps it.
     st.ordered.push_back(tip);
     st.ordered_set.insert(tip);
-    // Flood known_headers past live+4096 threshold.
+    // Inserting 4200 headers passes the live-plus-4096 prune threshold.
     for i in 1u32..=4200 {
         let mut b = [0u8; 32];
         b[0..4].copy_from_slice(&i.to_le_bytes());

@@ -49,7 +49,6 @@ fn init_and_enabled() {
 fn timestamp_epoch() {
     let s = format_timestamp(UNIX_EPOCH);
     assert_eq!(s, "1970-01-01T00:00:00.000Z");
-    // 2024-01-01 00:00:00 UTC
     let s = format_timestamp(UNIX_EPOCH + std::time::Duration::from_secs(1_704_067_200));
     assert_eq!(s, "2024-01-01T00:00:00.000Z");
     // February and December are the Hinnant month arms. A log line's
@@ -145,7 +144,7 @@ fn init_from_env_off_and_level() {
     std::env::set_var("RBITCOIN_LOG", "not-a-level");
     assert!(!init_from_env());
     std::env::remove_var("RBITCOIN_LOG");
-    // RUST_LOG fallback.
+    // With RBITCOIN_LOG unset, init_from_env reads RUST_LOG.
     std::env::set_var("RUST_LOG", "warn");
     assert!(init_from_env());
     assert!(enabled(Level::Warn));
@@ -164,7 +163,7 @@ fn init_from_env_off_and_level() {
     init(Level::Warn);
     assert!(enabled(Level::Warn));
     assert!(!enabled(Level::Info));
-    // Bold style path (non-TTY → plain write arm still executed).
+    // A non-TTY still takes the bold style path, which writes the plain line.
     init(Level::Error);
     log_at_style(Level::Error, Style::Bold, format_args!("bold-err"));
     init(Level::Info);

@@ -17,11 +17,11 @@ fn assign_policy_helpers_surface() {
     assert_eq!(far_slots_per_peer(16, false), 8);
     assert_eq!(far_slots_per_peer(8, false), 4);
 
-    // Sparse: 4k claim-ready of 120k live → no bypass
+    // A sparse path, 4_000 claim-ready of 120_000 live, does not bypass the soft cap.
     assert!(!want_headers_beyond_soft_cap(120_000, 4_000, 100, 2048));
-    // Dense + short ready_gap → bypass
+    // A dense path with a short ready gap bypasses the soft cap.
     assert!(want_headers_beyond_soft_cap(64_000, 50_000, 100, 2048));
-    // Dense but long ready_gap → no need
+    // A dense path with a long ready gap does not need headers past the soft cap.
     assert!(!want_headers_beyond_soft_cap(64_000, 50_000, 10_000, 2048));
     // Empty path is not soft-cap headroom (tip 1-header storm).
     assert!(!want_headers_beyond_soft_cap(0, 0, 0, 2048));
@@ -196,7 +196,7 @@ fn ordered_set_remove_and_compact_surface() {
         set.insert(h(i));
     }
     for i in 1u16..=20 {
-        ordered.push_back(h(2000 + i)); // ghosts
+        ordered.push_back(h(2000 + i));
     }
     let before = ordered.len();
     compact_ordered(&mut ordered, &set);
@@ -210,6 +210,6 @@ fn ordered_set_remove_and_compact_surface() {
     assert_eq!(ordered.front().copied(), Some(h(4)));
     assert_eq!(ordered.len(), 1);
 
-    assert_eq!(far_slots_per_peer(1, false), 1); // max(0,1)=1
+    assert_eq!(far_slots_per_peer(1, false), 1);
     assert_eq!(far_slots_per_peer(3, false), 1);
 }

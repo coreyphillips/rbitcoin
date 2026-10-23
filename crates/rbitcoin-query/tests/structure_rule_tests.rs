@@ -33,7 +33,7 @@ fn params() -> ChainParams {
 }
 
 fn ctx_h(height: u32) -> ValidationContext<'static> {
-    // Leak params for 'static test ctx simplicity.
+    // Leak the params so this test context can be 'static.
     let p = Box::leak(Box::new(params()));
     ValidationContext::at(p, Height(height), Milestone::NONE)
 }
@@ -544,10 +544,10 @@ fn s4_rejects_overweight_block() {
     // ~1MB of script data per tx ≈ 4M weight; a few large outputs exceed the limit.
     let mut txs = vec![coinbase(1)];
     for i in 0..5u8 {
-        let mut spk = vec![0x6a, 0x4d, 0xff, 0xff]; // OP_RETURN + pushdata2 placeholder
+        let mut spk = vec![0x6a, 0x4d, 0xff, 0xff]; // OP_RETURN plus a PUSHDATA2 length placeholder.
                                                     // Fill with ~900 KiB raw data via OP_RETURN chunking is awkward; use large script
                                                     // bytes rust-bitcoin will count toward base size.
-        spk.extend(std::iter::repeat_n(0x61, 900_000)); // OP_NOP filler
+        spk.extend(std::iter::repeat_n(0x61, 900_000)); // 0x61 is OP_NOP, used as filler weight.
         txs.push(Transaction {
             version: TxVersion::ONE,
             lock_time: LockTime::ZERO,
@@ -889,7 +889,6 @@ fn merkle_root_bytes_single_and_odd() {
     assert_eq!(merkle_root_bytes(&[a]), a);
     let b = [2u8; 32];
     let root2 = merkle_root_bytes(&[a, b]);
-    // odd: third leaf duplicated
     let root3 = merkle_root_bytes(&[a, b, a]);
     assert_ne!(root2, root3);
     assert_eq!(merkle_root_bytes(&[]), [0u8; 32]);
@@ -932,17 +931,17 @@ fn rejects_coinbase_excess_value_fast() {
 
 #[test]
 fn script_sigop_count_and_last_push_helpers() {
-    // CHECKSIG / CHECKSIGVERIFY
+    // 0xac is CHECKSIG and 0xad is CHECKSIGVERIFY. Each counts as one sigop.
     assert_eq!(script_sigop_count(&[0xac], false), 1);
     assert_eq!(script_sigop_count(&[0xad], false), 1);
-    // CHECKMULTISIG without accurate → 20
+    // CHECKMULTISIG and CHECKMULTISIGVERIFY count as 20 sigops when the accurate flag is off.
     assert_eq!(script_sigop_count(&[0xae], false), 20);
     assert_eq!(script_sigop_count(&[0xaf], false), 20);
-    // Accurate: OP_2 CHECKMULTISIG → 2
+    // With the accurate flag, OP_2 CHECKMULTISIG counts as two sigops.
     assert_eq!(script_sigop_count(&[0x52, 0xae], true), 2);
-    // Direct push skip
+    // A direct data push is skipped, so the CHECKSIG after it still counts as one.
     assert_eq!(script_sigop_count(&[0x01, 0xff, 0xac], false), 1);
-    // PUSHDATA1 / 2 / 4 skip
+    // PUSHDATA1, PUSHDATA2, and PUSHDATA4 payloads are skipped, so the following CHECKSIG still counts as one.
     assert_eq!(script_sigop_count(&[0x4c, 0x01, 0xab, 0xac], false), 1);
     assert_eq!(
         script_sigop_count(&[0x4d, 0x01, 0x00, 0xcd, 0xac], false),
@@ -952,7 +951,6 @@ fn script_sigop_count_and_last_push_helpers() {
         script_sigop_count(&[0x4e, 0x01, 0x00, 0x00, 0x00, 0xee, 0xac], false),
         1
     );
-    // last_script_push variants
     assert_eq!(
         last_script_push(&[0x02, 0x11, 0x22]),
         Some(&[0x11, 0x22][..])
@@ -970,7 +968,6 @@ fn script_sigop_count_and_last_push_helpers() {
         Some(&[0x77][..])
     );
     assert_eq!(last_script_push(&[]), Some(&[][..]));
-    // Program shape helpers
     let mut p2sh = vec![0xa9, 0x14];
     p2sh.extend_from_slice(&[0u8; 20]);
     p2sh.push(0x87);
@@ -1026,14 +1023,11 @@ fn p3_default_milestone_heights() {
 
 #[test]
 fn s8_accepts_witness_commitment_with_reserved_value() {
-    // Build a valid commitment using non-zero witness reserved in coinbase witness.
     let mut spend = non_coinbase_spend(11);
     spend.input[0].witness = Witness::from_slice(&[vec![0xab]]);
     let mut cb = coinbase(1);
-    // Place reserved value as last coinbase witness stack item.
     let reserved = [0x42u8; 32];
     cb.input[0].witness = Witness::from_slice(&[reserved.as_slice()]);
-    // Compute expected commitment: SHA256D(witness_root || reserved)
     let wtxid = spend.compute_wtxid().to_byte_array();
     let leaves = vec![[0u8; 32], wtxid];
     let witness_root = merkle_root_bytes(&leaves);
@@ -1079,7 +1073,6 @@ fn s8_rejects_empty_or_multi_item_coinbase_witness_reserved() {
             value: Amount::ZERO,
             script_pubkey: ScriptBuf::from_bytes(spk.clone()),
         });
-        // witness empty
         let b = block_with(vec![cb, spend.clone()]);
         let err = validate_block_structure(&b, &ctx_h(1)).unwrap_err();
         assert!(
@@ -1282,7 +1275,6 @@ fn assemble_rejects_empty_and_fk_mismatch() {
     .err()
     .expect("fk mismatch");
     assert_bad_block(rule_err(err2), "archived tx fk");
-    // first tx not coinbase
     let bad = block_with(vec![non_coinbase_spend(1)]);
     spent.clear();
     creates.clear();
@@ -2642,7 +2634,7 @@ fn n1_assemble_cold_why_reasons() {
     {
         let mut parents = BatchParents::new();
         let mut rec = q.get_tx(last_cb_fk).expect("class a");
-        rec.txid = [0xee; 32]; // wrong identity
+        rec.txid = [0xee; 32];
         let out = OutputRecord::unspent(50_0000_0000, vec![0x51]);
         parents.put_resolved(last_cb_fk, rec, &[(0, out)], &[0], Some(true));
         let err = match resolve_prevout(

@@ -18,7 +18,8 @@ fn signet_magic() -> Magic {
 fn short_id_roundtrip_common() {
     assert_eq!(short_id_for_command("block"), Some(2));
     assert_eq!(short_id_for_command("ping"), Some(18));
-    assert_eq!(short_id_for_command("version"), None); // long form
+    // `version` has no short id, so it uses the long form.
+    assert_eq!(short_id_for_command("version"), None);
     assert_eq!(command_for_short_id(2), Some("block"));
     assert_eq!(command_for_short_id(18), Some("ping"));
 }
@@ -26,7 +27,6 @@ fn short_id_roundtrip_common() {
 /// Live IBD + tip-follow + tip-tx command set must map to Core BIP324 short IDs.
 #[test]
 fn short_ids_cover_live_ibd_tip_commands() {
-    // Commands used on current sync / tip follow / tip tx relay paths.
     let live = [
         ("addr", 1u8),
         ("block", 2),
@@ -50,9 +50,8 @@ fn short_ids_cover_live_ibd_tip_commands() {
     for (cmd, id) in live {
         assert_eq!(short_id_for_command(cmd), Some(id), "short id for {cmd}");
         assert_eq!(command_for_short_id(id), Some(cmd));
-        // Round-trip through encode/parse for empty-payload or simple msgs.
     }
-    // Application handshake uses long form (not short-id).
+    // `version` and `verack` have no short id, so the handshake uses the long form.
     assert!(short_id_for_command("version").is_none());
     assert!(short_id_for_command("verack").is_none());
     assert_eq!(
@@ -81,7 +80,7 @@ fn short_ids_cover_live_ibd_tip_commands() {
         v2_packet_decryption_failure_log(),
         "p2p: V2 transport error: packet decryption failure"
     );
-    // Placeholder slots 29–36 stay empty (unknown short id → protocol error).
+    // Short ids 29 through 36 are empty placeholders. An unknown short id is not a command.
     for id in 29u8..=36 {
         assert!(command_for_short_id(id).is_none(), "slot {id} empty");
     }
@@ -120,7 +119,6 @@ fn parse_v2_regtest_named_junk_does_not_panic() {
 fn encode_parse_verack_long_form() {
     let magic = signet_magic();
     let contents = encode_v2_contents(NetworkMessage::Verack).unwrap();
-    // version/verack use long form: 0x00 + "verack" + pad + empty payload
     assert_eq!(contents[0], 0);
     assert_eq!(&contents[1..7], b"verack");
     let frame = parse_v2_contents(magic, &contents).unwrap();
@@ -134,7 +132,8 @@ fn encode_parse_verack_long_form() {
 fn encode_parse_sendaddrv2_long_form_with_digit() {
     let magic = signet_magic();
     let contents = encode_v2_contents(NetworkMessage::SendAddrV2).unwrap();
-    assert_eq!(contents[0], 0); // long form
+    // A leading zero is the long form, not a short id.
+    assert_eq!(contents[0], 0);
     assert_eq!(&contents[1..11], b"sendaddrv2");
     let frame = parse_v2_contents(magic, &contents).expect("digit in command ok");
     assert!(matches!(
@@ -147,7 +146,7 @@ fn encode_parse_sendaddrv2_long_form_with_digit() {
 #[test]
 fn unknown_short_id_is_invalid_type_not_protocol() {
     let magic = signet_magic();
-    // short id 99 + compact-size string "d" (Core `msg_unrecognized`).
+    // Short id 99 plus a compact-size string `d` is Core's `msg_unrecognized` case.
     let contents = vec![99u8, 1, b'd'];
     match parse_v2_contents(magic, &contents) {
         Err(NetError::InvalidV2Type { contents_len }) => {
@@ -162,7 +161,8 @@ fn unknown_short_id_is_invalid_type_not_protocol() {
 fn encode_parse_ping_short_id() {
     let magic = signet_magic();
     let contents = encode_v2_contents(NetworkMessage::Ping(0xdead_beef)).unwrap();
-    assert_eq!(contents[0], 18); // ping short id
+    // 18 is the ping short id.
+    assert_eq!(contents[0], 18);
     assert_eq!(contents.len(), 1 + 8);
     let frame = parse_v2_contents(magic, &contents).unwrap();
     assert!(frame.is_ping());
@@ -198,7 +198,6 @@ async fn bip324_duplex_ping_pong() {
             .await
             .expect("server handshake");
         let (mut r, mut w) = protocol.into_split();
-        // read genuine packet
         loop {
             let p = r.read().await.expect("server read");
             if p.packet_type() == PacketType::Genuine {
@@ -427,7 +426,6 @@ async fn oversized_v2_length_prefix_rejects_before_body() {
 
     let magic = signet_magic();
     let magic_b = magic.to_bytes();
-    // Handshake + 3-byte length only; body is never sent.
     let (client, server) = duplex(8 * 1024);
 
     let server_task = tokio::spawn(async move {
@@ -454,7 +452,6 @@ async fn oversized_v2_length_prefix_rejects_before_body() {
     cipher
         .encrypt(&plaintext, &mut packet, PacketType::Genuine, None)
         .expect("encrypt oversized length");
-    // Length prefix only — Core disconnects here.
     raw_w.write_all(&packet[..3]).await.unwrap();
     raw_w.flush().await.unwrap();
 

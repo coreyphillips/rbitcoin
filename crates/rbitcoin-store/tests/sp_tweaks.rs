@@ -50,7 +50,7 @@ fn put_get_len_tweak_no_txid() {
     assert_eq!(pub_len, FILE_HEADER_LEN + want.len());
     assert_eq!(&raw[FILE_HEADER_LEN..pub_len], want.as_slice());
 
-    // Idx slot is u32 off only (no header_fk).
+    // An index slot is only a u32 body offset. It does not store a header fk.
     let idx = fs::read(SpTweaksTable::seg_dirs(&dir).idx_path(0)).unwrap();
     let idx_hwm = u64::from_le_bytes(idx[8..16].try_into().unwrap()) as usize;
     assert_eq!(idx_hwm, FILE_HEADER_LEN + 4);

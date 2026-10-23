@@ -7,7 +7,7 @@ use rbitcoin_consensus::script::interpreter::*;
 
 #[test]
 fn eval_sig_then_p2sh_style() {
-    // scriptSig 00 01 51 → stack [[],[0x51]]
+    // The script pushes an empty item and then 0x51.
     let ss = [0x00u8, 0x01, 0x51];
     let tx = Transaction {
         version: bitcoin::transaction::Version::TWO,

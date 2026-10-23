@@ -79,7 +79,7 @@ fn eviction_drops_the_newest_in_the_largest_netgroup() {
 
 #[test]
 fn eviction_protects_block_tx_ping_and_netgroup() {
-    // 4 block + 5 slow + 4 tx + 8 fast = 21; after protects, one slow remains.
+    // Four peers relayed a block, five are slow, four relayed a transaction, and eight are fast. After the protects, one slow peer remains.
     let mut cands = Vec::new();
     for i in 0..4 {
         cands.push(cand(i, 100 + i, Some(0.05), 1000 + i, 0));
@@ -115,7 +115,7 @@ fn noban_never_evicted_alone() {
 
 #[test]
 fn maxconnections_shaped_protect_count() {
-    // Fewer than protect budget → nothing to evict.
+    // Eight candidates are under the protect budget, so nothing is evicted.
     let cands: Vec<_> = (0..8).map(|i| cand(i, i, Some(0.1), i, i)).collect();
     assert!(select_inbound_eviction(cands).is_none());
 }

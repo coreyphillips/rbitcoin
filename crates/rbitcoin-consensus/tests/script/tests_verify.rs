@@ -25,7 +25,7 @@ fn make_p2wpkh_spend() -> (ScriptCheckJob, bool) {
         script_pubkey: ScriptBuf::from_bytes(spk.clone()),
     };
 
-    // Unsigned shell first for sighash
+    // The transaction is built without a signature so the sighash can be computed first.
     let mut tx = Transaction {
         version: bitcoin::transaction::Version::TWO,
         lock_time: LockTime::ZERO,
@@ -186,7 +186,7 @@ fn pretaproot_v1_witness_program_anyone_can_spend() {
             previous_output: OutPoint::null(),
             script_sig: ScriptBuf::new(),
             sequence: Sequence::MAX,
-            witness: Witness::from_slice(&[vec![0x01]]), // garbage witness OK pre-activation
+            witness: Witness::from_slice(&[vec![0x01]]), // a garbage witness is allowed before witness rules activate
         }],
         output: vec![TxOut {
             value: Amount::from_sat(900),
@@ -474,7 +474,7 @@ fn mainnet_block_124276_lax_der_pre_bip66() {
         flags: rbitcoin_consensus::block::ScriptVerifyFlags {
             bip65_active: true,
             bip112_active: true,
-            bip66_active: false, // height 124276 << bip66 363725
+            bip66_active: false, // block 124276 is before BIP66 activation at 363725
             bip16_active: true,
             taproot_active: true,
             minimal_if: false,
@@ -641,7 +641,7 @@ fn mainnet_block_170060_pre_bip16_p2sh_as_bare() {
             bip65_active: false,
             bip112_active: false,
             bip66_active: false,
-            bip16_active: false, // pre-BIP16 / exception block
+            bip16_active: false, // BIP16 is off, as on the exception block
             taproot_active: true,
             minimal_if: false,
             nullfail: false,
@@ -765,7 +765,7 @@ fn mainnet_block_140493_high_bit_s_lax_der_p2pkh() {
         flags: rbitcoin_consensus::block::ScriptVerifyFlags {
             bip65_active: true,
             bip112_active: true,
-            bip66_active: false, // height 140493 << bip66 363725
+            bip66_active: false, // block 140493 is before BIP66 activation at 363725
             bip16_active: true,
             taproot_active: true,
             minimal_if: false,
@@ -862,9 +862,9 @@ fn mainnet_block_443992_p2sh_codeseparator_scriptcode() {
         prevouts: rbitcoin_consensus::block::JobPrevouts::owned(vec![prevout]),
         tx: rbitcoin_consensus::block::JobTx::owned(spend),
         flags: rbitcoin_consensus::block::ScriptVerifyFlags {
-            bip65_active: true,  // 388381
-            bip112_active: true, // 419328
-            bip66_active: true,  // 363725
+            bip65_active: true,  // 388381 is the mainnet height where BIP65 is active
+            bip112_active: true, // 419328 is the mainnet height where BIP112 is active
+            bip66_active: true,  // 363725 is the mainnet height where BIP66 is active
             bip16_active: true,
             taproot_active: true,
             minimal_if: false,
@@ -898,7 +898,7 @@ fn cltv_in_scriptsig_with_op_true_spk_enforced() {
         lock_time: LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint::null(),
-            script_sig: ScriptBuf::from_bytes(vec![0x51, 0xb1]), // 1 CLTV
+            script_sig: ScriptBuf::from_bytes(vec![0x51, 0xb1]), // 0x51 0xb1 is OP_1 then CLTV
             sequence: Sequence::from_consensus(0),
             witness: Witness::new(),
         }],
@@ -1162,12 +1162,12 @@ fn p2wsh_witness_script_larger_than_520_is_valid() {
     // push > 520, low op count. Matches Core: script size ≠ stack-item size.
     let mut redeem = Vec::with_capacity(1100);
     for _ in 0..2 {
-        redeem.push(0x4d); // OP_PUSHDATA2
+        redeem.push(0x4d); // 0x4d is OP_PUSHDATA2
         redeem.extend_from_slice(&520u16.to_le_bytes());
         redeem.extend(std::iter::repeat_n(0u8, 520));
-        redeem.push(0x75); // OP_DROP
+        redeem.push(0x75); // 0x75 is OP_DROP
     }
-    redeem.push(0x51); // OP_1
+    redeem.push(0x51); // 0x51 is OP_1
     assert!(redeem.len() > 520);
     let hash = bitcoin::hashes::sha256::Hash::hash(&redeem);
     let mut spk = vec![0x00u8, 0x20];

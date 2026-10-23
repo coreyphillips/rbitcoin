@@ -302,7 +302,7 @@ fn published_meta_seqlock_matches_last_record_len() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-#[allow(clippy::cognitive_complexity)] // one fixture, many surface arms
+#[allow(clippy::cognitive_complexity)] // One fixture covers many surface arms.
 #[test]
 fn var_table_surface_helpers_and_errors() {
     let dir = std::env::temp_dir().join(format!(

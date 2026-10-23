@@ -60,7 +60,8 @@ fn quantile_interpolates_in_log_rate_between_adjacent_hurdles() {
 
 #[test]
 fn a_past_spike_does_not_steer_a_calm_market() {
-    // 4000 calm blocks with a 400-block spike at 50000 in the middle
+    // Four thousand calm blocks, with a 400-block spike at 50_000 sat/kvB
+    // in the middle.
     let hurdles = (0..4_000).map(|i| {
         if (1_800..2_200).contains(&i) {
             50_000
@@ -119,7 +120,7 @@ fn a_target_answers_only_once_it_holds_enough_pairs() {
 
 #[test]
 fn an_unmatched_level_uses_the_nearest_neighbors() {
-    // now sits at 20000, far outside every past lookback band
+    // The latest hurdles are 20_000 sat/kvB, far outside every earlier lookback band.
     let hurdles = (0..3_000).map(|i| if i >= 2_990 { 20_000 } else { calm(i) });
     let h = history(&[2], hurdles);
     let rate = h.rate_sat_kvb(2, 0.5).unwrap();
@@ -190,7 +191,7 @@ fn analog_selector_keeps_each_boundary_rate() {
 
 #[test]
 fn end_updates_match_a_rebuild() {
-    // deterministic LCG drives pushes and pops at both ends
+    // A deterministic linear congruential generator drives pushes and pops at both ends.
     let mut seed = 42u64;
     let mut next = || {
         seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);

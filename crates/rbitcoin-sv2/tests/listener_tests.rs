@@ -325,7 +325,7 @@ async fn client_that_stops_reading_is_dropped_at_the_write_deadline() {
     })
     .await
     .expect("listen");
-    // This listener only. Drop removes the entry.
+    // The pin applies only to this listener. Dropping the guard removes the entry.
     #[cfg(target_os = "linux")]
     let _send_buf = rbitcoin_sv2::test_send_buffer::pin(tp.local_addr, 8 * 1024);
     // Pin the receive window too. A small SO_SNDBUF still drains while this

@@ -160,20 +160,20 @@ fn every_update_path_matches_a_fresh_history() {
 
     let targets = [1, 2, 6];
     let mut history = FeeHistory::new(20_000, &targets);
-    // preload walks down from 3000; connects arrive above it
+    // Preload walks downward from 3000. Later connects are the heights above that.
     for height in (1_000..=3_000u32).rev() {
         history.insert_if_absent(height, block(Some(calm(height)), 8), None);
     }
     history.insert(3_001, block(Some(5_000), 8), None);
     history.insert(3_002, block(None, 8), None);
-    // reorg: 3001 replaced, 3002 gone
+    // Replacing height 3001 is the reorg. Height 3002 is the block that reorg drops.
     history.insert(3_001, block(Some(700), 8), None);
-    // a gap fill between held heights marks the analog stale
+    // Filling a gap between heights this history already holds marks the analog stale.
     history.truncate_above(2_990);
     history.insert(2_995, block(Some(900), 8), None);
     history.insert_if_absent(2_993, block(Some(800), 8), None);
     assert!(history.analog_stale);
-    // budget eviction pops the oldest
+    // Inserting past the budget evicts the oldest entries.
     for height in 2_996..3_600u32 {
         history.insert(height, block(Some(calm(height)), 8), None);
     }

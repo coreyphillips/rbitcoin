@@ -482,8 +482,7 @@ async fn electrum_server_version_history_balance() {
 
     let mut stream = TcpStream::connect(handle.local_addr).await.unwrap();
 
-    // Need re-read pattern: after write we use BufReader which consumes stream.
-    // Use split request/response carefully with single stream.
+    // A BufReader borrows the stream, so the next write has to take it back first.
     {
         let req = json!({"jsonrpc":"2.0","id":1,"method":"server.version","params":["test","1.4"]});
         let mut line = serde_json::to_string(&req).unwrap();
@@ -512,7 +511,6 @@ async fn electrum_server_version_history_balance() {
         "version[0] must track workspace.package.version, got {server:?}"
     );
 
-    // OP_TRUE scripthash
     let sh_hex = electrum_scripthash_hex(&[0x51]);
     let req = json!({
         "jsonrpc":"2.0","id":2,
@@ -521,7 +519,7 @@ async fn electrum_server_version_history_balance() {
     });
     let mut line = serde_json::to_string(&req).unwrap();
     line.push('\n');
-    // reader holds &mut stream — drop reader first by re-getting stream from reader
+    // The reader still borrows the stream, so drop it before writing again.
     let stream = reader.into_inner();
     stream.write_all(line.as_bytes()).await.unwrap();
     let mut reader = BufReader::new(stream);
@@ -551,7 +549,6 @@ async fn electrum_server_version_history_balance() {
     let v: Value = serde_json::from_str(&resp_line).unwrap();
     assert!(v["result"]["confirmed"].as_i64().unwrap_or(0) > 0);
 
-    // Empty mempool
     let req = json!({
         "jsonrpc":"2.0","id":4,
         "method":"blockchain.scripthash.get_mempool",
@@ -566,7 +563,6 @@ async fn electrum_server_version_history_balance() {
     let v: Value = serde_json::from_str(&resp_line).unwrap();
     assert_eq!(v["result"], json!([]));
 
-    // Headers subscribe returns tip
     let req = json!({
         "jsonrpc":"2.0","id":5,
         "method":"blockchain.headers.subscribe",
@@ -580,7 +576,8 @@ async fn electrum_server_version_history_balance() {
     read_line_timeout(&mut reader, &mut resp_line, "headers.subscribe").await;
     let v: Value = serde_json::from_str(&resp_line).unwrap();
     assert!(v["result"]["height"].as_u64().unwrap() > 0);
-    assert!(v["result"]["hex"].as_str().unwrap().len() == 160); // 80-byte header hex
+    // 160 hex characters are an 80-byte header.
+    assert!(v["result"]["hex"].as_str().unwrap().len() == 160);
 
     // Tip push: server must forward TipNotify to subscribed clients.
     let tip_h = v["result"]["height"].as_u64().unwrap() as u32;
@@ -592,7 +589,7 @@ async fn electrum_server_version_history_balance() {
             reorg_from_height: None,
         })
         .expect("tip push");
-    // Notification has no id — wait for one line.
+    // A header notification has no JSON-RPC id, so the next line is that push.
     read_line_timeout(&mut reader, &mut resp_line, "tip notification").await;
     let push: Value = serde_json::from_str(&resp_line).unwrap();
     assert_eq!(
@@ -608,7 +605,7 @@ async fn electrum_server_version_history_balance() {
 
     let mut stream = TcpStream::connect(handle.local_addr).await.unwrap();
 
-    // Empty line is ignored (no response) — send ping after.
+    // An empty line gets no response, so the ping that follows is what the server answers.
     stream.write_all(b"\n").await.unwrap();
     // Bad JSON is ignored.
     stream.write_all(b"{not json\n").await.unwrap();
@@ -676,7 +673,7 @@ async fn electrum_server_version_history_balance() {
         json!([sh_hex]),
     )
     .await;
-    // status is hex string or null for empty
+    // A subscribe status is a hex string, or null when the script has no history.
     assert!(v.get("result").is_some());
 
     let next_h = chain.tip_height() + 1;
@@ -761,7 +758,6 @@ async fn electrum_server_version_history_balance() {
     .await;
     assert!(extra.is_err(), "untouched tip must not restatus: {extra:?}");
 
-    // Coinbase of height 1 via id_from_pos.
     let v = rpc(
         &mut stream,
         10,
@@ -950,7 +946,6 @@ async fn electrum_server_version_history_balance() {
     let v = rpc(&mut stream, 16, "mempool.get_fee_histogram", json!([])).await;
     assert!(v["result"].as_array().is_some());
 
-    // Missing tx.
     let v = rpc(
         &mut stream,
         17,
@@ -960,11 +955,9 @@ async fn electrum_server_version_history_balance() {
     .await;
     assert!(v.get("error").is_some(), "{v}");
 
-    // Unknown method.
     let v = rpc(&mut stream, 18, "no.such.method", json!([])).await;
     assert!(v.get("error").is_some());
 
-    // Broadcast without mempool → error.
     let v = rpc(
         &mut stream,
         19,
@@ -982,7 +975,6 @@ async fn electrum_server_version_history_balance() {
     .await;
     assert!(v.get("error").is_some(), "{v}");
 
-    // Bad params.
     let v = rpc(&mut stream, 20, "blockchain.block.header", json!(["x"])).await;
     assert!(v.get("error").is_some());
 
@@ -2945,7 +2937,7 @@ fn direct_indexes_then_sh_bulk_at_tip() {
     let q = Query::open_or_create_tiny(dir.path().join("store")).unwrap();
     let params = ChainParams::regtest();
 
-    // Direct IBD: live heads + spend annotations on confirm.
+    // Direct index mode writes live heads and spend annotations as each block confirms.
     q.enter_direct_index_mode().unwrap();
 
     let g = regtest_genesis();
@@ -2960,7 +2952,6 @@ fn direct_indexes_then_sh_bulk_at_tip() {
     }
     assert_eq!(q.tip_height(), Some(Height(5)));
     assert!(q.tx_body_count() >= 6);
-    // Direct writes tx.head on archive/connect path.
     assert!(q.tx_head_occupied() >= 6, "head filled under Direct");
     let b1 = q.reconstruct_block_at_height(Height(1)).unwrap();
     let cb_txid = b1.txdata[0].compute_txid().to_byte_array();
@@ -2969,11 +2960,10 @@ fn direct_indexes_then_sh_bulk_at_tip() {
         "txid resolves via live tx.head under Direct"
     );
 
-    // Manual rebuild is idempotent when head is already dense (rehash tool).
+    // backfill_tx_index is the rehash tool. A head that is already dense inserts nothing.
     let inserted = q.backfill_tx_index(|_, _, _| {}).unwrap();
     assert_eq!(inserted, 0, "no missing head entries after Direct");
 
-    // OP_TRUE coinbase outputs from mine_regtest_block appear under that scripthash.
     let sh = {
         use rbitcoin_store::script_hash;
         script_hash(&[0x51])

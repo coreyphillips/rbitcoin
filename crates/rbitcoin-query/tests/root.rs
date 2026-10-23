@@ -1270,7 +1270,7 @@ fn a_queued_body_off_the_header_path_is_not_the_milestone_chain() {
     let _ = dir;
 }
 
-#[allow(clippy::cognitive_complexity)] // one fixture, many helper arms
+#[allow(clippy::cognitive_complexity)] // One fixture covers many helper cases, so this test stays in one function.
 #[test]
 fn index_mode_helpers_and_batch_helpers() {
     assert!(IndexMode::Direct.is_direct());

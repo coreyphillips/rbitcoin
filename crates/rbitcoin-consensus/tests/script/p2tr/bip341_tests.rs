@@ -546,7 +546,7 @@ fn key_path_accepts_valid_schnorr() {
     let sk = SecretKey::from_slice(&[4u8; 32]).unwrap();
     let kp = Keypair::from_secret_key(&secp, &sk);
     let (internal, _) = kp.x_only_public_key();
-    // Key-path only (no script tree): merkle_root = None
+    // A key-path spend has no script tree, so the merkle root passed here is None.
     let tweaked: TweakedKeypair = kp.tap_tweak(&secp, None);
     let output_key = tweaked.to_keypair().x_only_public_key().0;
 
@@ -578,7 +578,7 @@ fn key_path_accepts_valid_schnorr() {
     let sig = secp.sign_schnorr_no_aux_rand(&msg, &tweaked.to_keypair());
     tx.input[0].witness = Witness::from_slice(&[sig.as_ref()]);
 
-    let _ = internal; // used implicitly via tweak
+    let _ = internal; // the internal key is only used through the tweak, so the binding keeps it
     let job = ScriptCheckJob {
         txid: [0u8; 32],
         prevouts: rbitcoin_consensus::block::JobPrevouts::owned(vec![prevout]),
@@ -717,7 +717,7 @@ fn key_path_annex_must_enter_sighash() {
             script_pubkey: ScriptBuf::from_bytes(vec![0x51]),
         }],
     };
-    let annex_bytes: &[u8] = &[0x50, 0x00, 0xde, 0xad]; // Libre-legal payload
+    let annex_bytes: &[u8] = &[0x50, 0x00, 0xde, 0xad]; // this annex payload is legal under Libre policy
     let prevouts = Prevouts::All(std::slice::from_ref(&prevout));
 
     // Sign WITHOUT annex, spend WITH annex → must fail (historical bug).
@@ -764,7 +764,7 @@ fn key_path_annex_must_enter_sighash() {
         );
     }
 
-    // Sign WITH annex → must pass.
+    // A signature that commits to the annex must succeed when the spend includes that annex.
     {
         let annex = Annex::new(annex_bytes).unwrap();
         let mut cache = SighashCache::new(&tx);
@@ -891,7 +891,7 @@ fn script_path_annex_checksig() {
     let sk = SecretKey::from_slice(&[9u8; 32]).unwrap();
     let kp = Keypair::from_secret_key(&secp, &sk);
     let (xonly, _) = kp.x_only_public_key();
-    // leaf: <xonly> CHECKSIG
+    // The leaf is a 32-byte x-only key followed by CHECKSIG.
     let mut leaf_bytes = vec![0x20];
     leaf_bytes.extend_from_slice(&xonly.serialize());
     leaf_bytes.push(0xac);
@@ -1184,17 +1184,17 @@ fn script_path_many_inputs_hash_spent_outputs_once() {
 
 #[test]
 fn bip341_annex_detection_edges() {
-    // <2 items: never annex
+    // Fewer than two witness items is never an annex.
     let w1 = Witness::from_slice(&[vec![0x50]]);
     assert!(bip341_annex(&w1).is_none());
     assert!(bip341_annex(&Witness::new()).is_none());
-    // 2 items, last not 0x50
+    // Two items whose last item does not start with 0x50 are not an annex.
     let w2 = Witness::from_slice(&[vec![1], vec![0xc0, 1, 2]]);
     assert!(bip341_annex(&w2).is_none());
-    // 2 items, last is annex
+    // Two items whose last item starts with 0x50 are an annex.
     let w3 = Witness::from_slice(&[vec![1], vec![0x50]]);
     assert_eq!(bip341_annex(&w3), Some(&[0x50][..]));
-    // empty last (no 0x50)
+    // An empty last item is not an annex.
     let w4 = Witness::from_slice(&[vec![1], vec![]]);
     assert!(bip341_annex(&w4).is_none());
 }
@@ -1209,8 +1209,8 @@ fn script_path_two_leaf_merkle_path() {
     let (internal_xonly, _) = internal_kp.x_only_public_key();
 
     // DFS order: left then right at depth 1.
-    let left = ScriptBuf::from_bytes(vec![0x51, 0x51]); // OP_TRUE OP_TRUE (not used)
-    let right = ScriptBuf::from_bytes(vec![0x51]); // OP_TRUE
+    let left = ScriptBuf::from_bytes(vec![0x51, 0x51]); // two OP_TRUE bytes; this leaf is not the one the spend uses
+    let right = ScriptBuf::from_bytes(vec![0x51]); // 0x51 is OP_TRUE
     let builder = TaprootBuilder::new()
         .add_leaf(1, left)
         .unwrap()
@@ -1290,11 +1290,11 @@ fn script_path_codeseparator_checksig_chain() {
     let mut leaf_bytes = Vec::new();
     leaf_bytes.push(0x20);
     leaf_bytes.extend_from_slice(&x1.serialize());
-    leaf_bytes.push(0xad); // CHECKSIGVERIFY
-    leaf_bytes.push(0xab); // CODESEPARATOR  (instruction index 2)
+    leaf_bytes.push(0xad); // 0xad is CHECKSIGVERIFY
+    leaf_bytes.push(0xab); // 0xab is OP_CODESEPARATOR at instruction index 2
     leaf_bytes.push(0x20);
     leaf_bytes.extend_from_slice(&x2.serialize());
-    leaf_bytes.push(0xac); // CHECKSIG
+    leaf_bytes.push(0xac); // 0xac is CHECKSIG
     let leaf = ScriptBuf::from_bytes(leaf_bytes);
 
     let internal_sk = SecretKey::from_slice(&[13u8; 32]).unwrap();

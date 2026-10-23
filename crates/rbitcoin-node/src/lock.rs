@@ -47,7 +47,7 @@ pub fn lock_dir(dir: &Path) -> Result<File, NodeError> {
 pub fn is_lock_busy_io(e: &io::Error) -> bool {
     #[cfg(windows)]
     {
-        // ERROR_SHARING_VIOLATION
+        // Windows returns ERROR_SHARING_VIOLATION (32) when another process holds the file.
         e.raw_os_error() == Some(32)
     }
     #[cfg(not(windows))]

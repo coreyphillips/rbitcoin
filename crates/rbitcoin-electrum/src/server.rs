@@ -284,6 +284,7 @@ pub async fn run_electrum(
 }
 
 /// Read one `\n`-terminated line with a hard byte cap (prevents OOM without newline).
+/// A partial line at EOF is still returned when it is within the cap.
 pub async fn read_line_capped<R>(
     reader: &mut R,
     max_bytes: usize,
@@ -299,7 +300,6 @@ where
             return if buf.is_empty() {
                 Ok(None)
             } else {
-                // EOF mid-line — treat as complete if under cap.
                 if buf.len() > max_bytes {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::InvalidData,

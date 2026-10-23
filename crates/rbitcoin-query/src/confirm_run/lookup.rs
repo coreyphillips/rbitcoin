@@ -711,7 +711,7 @@ pub fn carried_header_at(
     })
 }
 
-#[allow(clippy::too_many_arguments)] // one header-link stamp; call site stays unbundled
+#[allow(clippy::too_many_arguments)] // This is one header-link stamp, and the call site keeps the arguments unbundled.
 #[doc(hidden)]
 pub fn stamp_check_header_link(
     query: &Query,

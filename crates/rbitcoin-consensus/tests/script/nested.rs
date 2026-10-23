@@ -133,8 +133,8 @@ fn push_only_and_split_helpers() {
 fn p2sh_scriptsig_push_over_520_rejected() {
     // Redeem = OP_TRUE padded with OP_DROP + 521-byte push inside redeem would be
     // redeem-eval path. Here the **scriptSig push** of redeem itself is 521 bytes.
-    let mut redeem = vec![0x51]; // OP_TRUE
-    redeem.extend(std::iter::repeat_n(0x61u8, 520)); // pad so len=521
+    let mut redeem = vec![0x51]; // 0x51 is OP_TRUE
+    redeem.extend(std::iter::repeat_n(0x61u8, 520)); // OP_NOP padding brings the redeem script to 521 bytes
     assert!(redeem.len() > interpreter::MAX_SCRIPT_ELEMENT_SIZE);
 
     // Minimal encoding of 521-byte push uses PUSHDATA2 (0x4d).
@@ -199,7 +199,7 @@ fn p2sh_nested_non_minimal_redeem_push_malleated() {
         r.extend([0xab; 20]);
         r
     };
-    // PUSHDATA1 instead of direct OP_PUSHBYTES_22
+    // The redeem script is pushed with OP_PUSHDATA1 instead of a direct 22-byte push.
     let mut ss = vec![0x4c, redeem.len() as u8];
     ss.extend_from_slice(&redeem);
     let mut tx = dummy_tx();
@@ -315,7 +315,7 @@ fn p2sh_nested_inactive_witness_flag_returns_none() {
 /// Control: multi-push non-witness redeem still falls through to legacy.
 #[test]
 fn p2sh_legacy_multi_push_non_witness_fallthrough() {
-    let redeem = vec![0x51]; // OP_TRUE
+    let redeem = vec![0x51]; // 0x51 is OP_TRUE
     let mut ss = vec![0x01, 0xaa, redeem.len() as u8];
     ss.extend_from_slice(&redeem);
     let mut tx = dummy_tx();
@@ -338,7 +338,7 @@ fn p2sh_legacy_multi_push_non_witness_fallthrough() {
 #[test]
 fn p2sh_nested_v1_program_anyone_can_spend() {
     let redeem = {
-        let mut r = vec![0x51, 0x20]; // OP_1 + 32-byte program
+        let mut r = vec![0x51, 0x20]; // 0x51 is OP_1, followed by a 32-byte program
         r.extend([0xee; 32]);
         r
     };
@@ -372,7 +372,7 @@ fn try_nested_error_paths() {
         txid: [0u8; 32],
         prevouts: rbitcoin_consensus::block::JobPrevouts::owned(vec![TxOut {
             value: Amount::from_sat(1),
-            script_pubkey: ScriptBuf::from_bytes(vec![0x51]), // not 23-byte P2SH
+            script_pubkey: ScriptBuf::from_bytes(vec![0x51]), // this script is not a 23-byte P2SH template
         }]),
         tx: rbitcoin_consensus::block::JobTx::owned(tx.clone()),
         flags: rbitcoin_consensus::block::ScriptVerifyFlags {
@@ -403,7 +403,7 @@ fn try_nested_error_paths() {
     );
     assert!(matches!(r, Some(Err(_))));
 
-    // Wrong redeem hash
+    // The scriptPubKey is the hash of 0xff, not of the redeem script this input pushes.
     let job2 = ScriptCheckJob {
         txid: [0u8; 32],
         prevouts: rbitcoin_consensus::block::JobPrevouts::owned(vec![TxOut {
@@ -441,7 +441,7 @@ fn try_nested_error_paths() {
         Some(Err(_))
     ));
 
-    // P2WSH redeem shape
+    // The redeem script is OP_0 plus a 32-byte program, the P2WSH template.
     let redeem_wsh = {
         let mut r = vec![0x00, 0x20];
         r.extend([0u8; 32]);
@@ -455,7 +455,7 @@ fn try_nested_error_paths() {
         txid: [0u8; 32],
         prevouts: rbitcoin_consensus::block::JobPrevouts::owned(vec![TxOut {
             value: Amount::from_sat(1),
-            script_pubkey: ScriptBuf::from_bytes(vec![0x00]), // short spk
+            script_pubkey: ScriptBuf::from_bytes(vec![0x00]), // this scriptPubKey is too short to be a witness program
         }]),
         tx: rbitcoin_consensus::block::JobTx::owned(tx3.clone()),
         flags: rbitcoin_consensus::block::ScriptVerifyFlags {
@@ -487,7 +487,7 @@ fn try_nested_error_paths() {
         ),
         Some(Err(_))
     ));
-    // wrong hash
+    // The scriptPubKey hashes 0x01, not this P2WSH redeem script.
     let job4 = ScriptCheckJob {
         txid: [0u8; 32],
         prevouts: rbitcoin_consensus::block::JobPrevouts::owned(vec![TxOut {
@@ -725,10 +725,10 @@ fn try_nested_matching_hash_enters_witness_verify() {
     ));
 
     // Legacy OP_TRUE redeem succeeds (require_true_top path).
-    let redeem = vec![0x51]; // OP_TRUE
+    let redeem = vec![0x51]; // 0x51 is OP_TRUE
     let mut ss3 = vec![0x01, 0xaa, redeem.len() as u8];
     ss3.extend_from_slice(&redeem);
-    // stack push 0xaa + redeem OP_TRUE
+    // The scriptSig pushes 0xaa and then the OP_TRUE redeem script.
     let mut tx3 = dummy_tx();
     tx3.input[0].script_sig = ScriptBuf::from_bytes(ss3);
     let job3 = ScriptCheckJob {

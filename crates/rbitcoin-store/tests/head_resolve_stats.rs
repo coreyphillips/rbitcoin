@@ -28,7 +28,7 @@ fn sample_age_cdf_and_compact() {
 
 #[test]
 fn sealed_age_for_fk_binary_search() {
-    // segs: [1, 100, 200] → ages from tip: si0 age2, si1 age1, si2 age0
+    // Segments starting at 1, 100, and 200 are sealed ages 2, 1, and 0 from the tip.
     let first = [1u64, 100, 200];
     assert_eq!(sealed_age_for_fk(&first, 0), None);
     assert_eq!(sealed_age_for_fk(&first, 1), Some(2));
@@ -51,11 +51,11 @@ fn sealed_age_for_fk_binary_search() {
 fn note_local_hit_age_buckets() {
     let first = [1u64, 50, 100];
     let mut local = [0u64; AGE_CAP];
-    note_local_hit_age(&mut local, &first, 10); // age 2
-    note_local_hit_age(&mut local, &first, 60); // age 1
-    note_local_hit_age(&mut local, &first, 100); // age 0
-    note_local_hit_age(&mut local, &first, 100); // age 0
-    note_local_hit_age(&mut local, &first, 0); // ignore
+    note_local_hit_age(&mut local, &first, 10); // Fk 10 is in the oldest segment, sealed age 2.
+    note_local_hit_age(&mut local, &first, 60); // Fk 60 is sealed age 1.
+    note_local_hit_age(&mut local, &first, 100); // Fk 100 is the tip segment, sealed age 0.
+    note_local_hit_age(&mut local, &first, 100); // Fk 100 is the tip segment, sealed age 0.
+    note_local_hit_age(&mut local, &first, 0); // A zero fk is not a hit.
     assert_eq!(local[0], 2);
     assert_eq!(local[1], 1);
     assert_eq!(local[2], 1);

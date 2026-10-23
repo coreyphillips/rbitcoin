@@ -53,6 +53,6 @@ fn empty_witness_and_hash_mismatch() {
     assert!(verify(&job, 0, &job.tx).is_err());
 
     let mut job2 = job;
-    job2.tx.input[0].witness = Witness::from_slice(&[vec![0x51]]); // OP_TRUE script
+    job2.tx.input[0].witness = Witness::from_slice(&[vec![0x51]]); // 0x51 is an OP_TRUE witness script
     assert!(verify_with_scripthash(&job2, 0, &job2.tx, &[0u8; 32]).is_err());
 }

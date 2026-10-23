@@ -1015,7 +1015,7 @@ fn core_log_helpers_match_step21_needles() {
         "p2p: getdata wtx aabbccdd peer=3"
     );
     assert_eq!(received_tx_log(), "p2p: received tx");
-    // Test formula: now=1_000_000, genesis=0 → variable = ceil(1e6/6e5)=2.
+    // With now at 1_000_000 and genesis time 0, the variable part is ceil(1_000_000 / 600_000), which is 2.
     assert_eq!(
         headers_download_timeout_secs(1_000_000, 0),
         1_000_000 + 900 + 2
@@ -1839,7 +1839,7 @@ fn tip_follow_accept_logs_update_tip_per_block() {
         AcceptOutcome::Accepted { height: 1 }
     ));
     assert_eq!(hub.tip_height(), Some(1));
-    // Second block also accepted (one log per height on real path).
+    // This second block is accepted as well. The real path logs one line per height.
     let b2 = mine(hash, 1_300_000_600, 2);
     assert!(matches!(
         hub.accept_block(b2).unwrap(),
@@ -1954,18 +1954,15 @@ fn ensure_genesis_accept_extend_and_already_have() {
         AcceptOutcome::Accepted { height: 1 }
     ));
     assert_eq!(hub.tip_height(), Some(1));
-    // AlreadyHave on re-accept.
     assert!(matches!(
         hub.accept_block(b1.clone()).unwrap(),
         AcceptOutcome::AlreadyHave
     ));
 
-    // Non-genesis without tip rejected on empty hub.
     let (dir2, empty) = tmp_hub();
     let err = empty.accept_block(b1.clone()).unwrap_err();
     assert!(matches!(err, NetError::Protocol(_)));
 
-    // Chain work is non-zero after tip.
     assert!(hub.chain_work().unwrap().to_be_bytes() != [0u8; 32]);
     assert!(hub.tip_header().is_some());
     let gwork = hub.work_through_height(0).unwrap();
@@ -2138,7 +2135,6 @@ fn wire_prep_ahead_of_store_tip_with_pipeline() {
     let h1 = b1.block_hash();
     let h2 = b2.block_hash();
 
-    // Batch 1 at store tip+1 (path_lo=1).
     let batch1 = [(rbitcoin_primitives::Height(1), b1.clone())];
     let mut inflight = rbitcoin_query::InFlight::new();
     let mut next_tx_start = hub.query.tx_body_count().saturating_add(1).max(1);
@@ -2165,7 +2161,7 @@ fn wire_prep_ahead_of_store_tip_with_pipeline() {
         "tip must not advance on load alone"
     );
 
-    // Update pipeline caches from plan (load-thread note_lookup_ok).
+    // Update the pipeline caches from this plan, the same way the load thread's `note_lookup_ok` does.
     let plan = mat1.batch.archive_plan.as_ref().unwrap();
     inflight.note_pins(
         plan.planned_fks
@@ -2178,7 +2174,6 @@ fn wire_prep_ahead_of_store_tip_with_pipeline() {
         next_tx_start = last.saturating_add(1).max(1);
     }
 
-    // Batch 2 while tip still 0 — must NOT Ok(None).
     let batch2 = [(rbitcoin_primitives::Height(2), b2.clone())];
     let mat2 = {
         let pipe = WireLoadPipeline {
@@ -2197,7 +2192,6 @@ fn wire_prep_ahead_of_store_tip_with_pipeline() {
     };
     assert_eq!(mat2.batch.len(), 1);
     assert!(mat2.batch.archive_plan.is_some());
-    // Reserved fks for batch2 start after batch1's plan.
     let p1_last = plan.planned_fks.last().unwrap().get().unwrap();
     let p2_first = mat2
         .batch
@@ -2226,7 +2220,7 @@ fn archive_then_confirm_run_and_empty_paths() {
     let b1 = mine(gen, 1_300_000_100, 1);
     let h1 = b1.block_hash();
 
-    // Header then accept (confirm is sole Class A).
+    // Store the header, then accept. Confirm is the only Class A write.
     hub.ensure_header(&b1.header).unwrap();
     hub.ensure_header_fk(&b1.header).unwrap();
     assert!(hub.confirm_wire_load_phase(&[]).unwrap().is_none());
@@ -2234,30 +2228,25 @@ fn archive_then_confirm_run_and_empty_paths() {
     assert!(matches!(acc, AcceptOutcome::Accepted { height: 1 }));
     assert!(hub.has_block(&h1));
     assert_eq!(hub.tip_height(), Some(1));
-    // Already confirmed → AlreadyHave.
     assert!(matches!(
         hub.accept_block(b1.clone()).unwrap(),
         AcceptOutcome::AlreadyHave
     ));
-    // Wire load on already-confirmed → None.
     assert!(hub
         .confirm_wire_load_phase(&[(Height(1), b1.clone())])
         .unwrap()
         .is_none());
 
-    // Unknown parent.
     let orphan = mine(BlockHash::from_byte_array([9u8; 32]), 1_300_000_200, 99);
     assert!(matches!(
         hub.accept_block(orphan).unwrap_err(),
         NetError::UnknownParent
     ));
 
-    // accept_branch empty / unlinked.
     assert!(hub.accept_branch(&[]).is_err());
     let b2 = mine(h1, 1_300_000_300, 2);
     let b3_bad = mine(BlockHash::from_byte_array([1u8; 32]), 1_300_000_400, 3);
     assert!(hub.accept_branch(&[b2.clone(), b3_bad]).is_err());
-    // Linked tip extension via branch.
     assert!(matches!(
         hub.accept_branch(std::slice::from_ref(&b2)).unwrap(),
         AcceptOutcome::Accepted { height: 2 }
@@ -2330,7 +2319,7 @@ fn ancestry_walks_never_reread_a_held_chain_lock() {
     let gen = hub.tip_hash().unwrap();
     let b1 = mine(gen, 1_300_030_000, 1);
     hub.accept_block(b1.clone()).unwrap();
-    // A header-only tip (`header_tips`) and a parked side body (`held_bodies`).
+    // The child is stored only as a header tip. The side block is parked in the held-body set.
     let child = mine(b1.block_hash(), 1_300_030_100, 2);
     hub.ensure_header(&child.header).unwrap();
     let side = mine(gen, 1_300_030_200, 1);
@@ -2390,10 +2379,8 @@ fn accept_competing_tip_and_block_at_height_paths() {
     // Mine many nonces for a sibling of b1 with higher work is hard on regtest
     // equal-bits; exercise IgnoredWeaker via accept of a different equal-work sibling.
     let mut sibling = mine(gen, 1_300_001_001, 1);
-    // Ensure different hash than b1.
     if sibling.block_hash() == b1.block_hash() {
         sibling.header.nonce = sibling.header.nonce.wrapping_add(1);
-        // re-mine pow
         let target = Target::from_compact(sibling.header.bits);
         for nonce in sibling.header.nonce..u32::MAX {
             sibling.header.nonce = nonce;
@@ -2410,15 +2397,12 @@ fn accept_competing_tip_and_block_at_height_paths() {
         AcceptOutcome::IgnoredWeaker | AcceptOutcome::Accepted { .. }
     ));
 
-    // block_at_height via reconstruct after tip extend.
     let b2 = mine(hub.tip_hash().unwrap(), 1_300_001_100, 2);
     hub.accept_block(b2.clone()).unwrap();
     let got = hub.block_at_height(2).unwrap().unwrap();
     assert_eq!(got.block_hash(), b2.block_hash());
-    // Far height → None.
     assert!(hub.block_at_height(9_999).unwrap().is_none());
 
-    // attach_mempool + accept_block removes confirmed txs (empty mempool).
     let mp_dir = dir.join("mp");
     let mp = rbitcoin_net::tx_relay::MempoolHub::open(&mp_dir, Arc::clone(&hub.query)).unwrap();
     assert!(hub.attach_mempool(mp).is_ok());
@@ -2773,7 +2757,6 @@ fn most_work_reorg_depth16_and_invalid_mid_branch_restores_tip() {
     let gen = hub.tip_hash().unwrap();
     let mut tip = gen;
     let time = 1_400_000_000u32;
-    // Best chain height 0..=8. Fork at height 2: main continues to 8.
     for h in 1..=8u32 {
         let b = mine(tip, time + h * 600, h);
         tip = b.block_hash();
@@ -2782,7 +2765,6 @@ fn most_work_reorg_depth16_and_invalid_mid_branch_restores_tip() {
     assert_eq!(hub.tip_height(), Some(8));
     let main_tip = hub.tip_hash().unwrap();
 
-    // Fork parent at height 2.
     let fork_parent = hub
         .query
         .header_at_height(Height(2))
@@ -2799,7 +2781,6 @@ fn most_work_reorg_depth16_and_invalid_mid_branch_restores_tip() {
         .1
         .timestamp;
 
-    // Competing branch depth 16 from height 3..=18 (16 blocks) → more work.
     let mut branch = Vec::new();
     let mut p = fork_prev;
     let mut t = fork_time;
@@ -2819,8 +2800,8 @@ fn most_work_reorg_depth16_and_invalid_mid_branch_restores_tip() {
     assert_eq!(hub.tip_hash().unwrap(), branch.last().unwrap().block_hash());
     assert_ne!(hub.tip_hash().unwrap(), main_tip);
 
-    // Weaker shorter branch from height 17 → IgnoredWeaker.
-    let weak = mine(hub.tip_hash().unwrap(), t + 10, 19); // extends tip — Accepted
+    // This block would extend the tip and be accepted, so it is not the weaker branch.
+    let weak = mine(hub.tip_hash().unwrap(), t + 10, 19);
     let _ = weak;
     let weak_side = mine(fork_prev, t + 9000, 3);
     let weak_out = hub.accept_branch(&[weak_side]).unwrap();
@@ -2830,7 +2811,6 @@ fn most_work_reorg_depth16_and_invalid_mid_branch_restores_tip() {
     );
     assert_eq!(hub.tip_height(), Some(18));
 
-    // Mid-branch invalid: longer path from height 10 with a bad spend in the middle.
     let pre_tip = hub.tip_hash().unwrap();
     let pre_h = hub.tip_height().unwrap();
     let fork2 = hub
@@ -2849,13 +2829,12 @@ fn most_work_reorg_depth16_and_invalid_mid_branch_restores_tip() {
         .1
         .timestamp;
 
-    // Path length 10 (> remaining 8 on main from 11..=18) so work_better.
+    // This path is 10 blocks. Eight blocks remain on the main chain from height 11 through 18, so the new path has more work.
     let mut bad_branch = Vec::new();
     let mut p = fork2_prev;
     let mut t = fork2_time;
     for (i, h) in (11..=20u32).enumerate() {
         let b = if i == 2 {
-            // Height 13: spend a non-existent prevout → connect fails.
             let bad_tx = Transaction {
                 version: TxVersion::ONE,
                 lock_time: LockTime::ZERO,
@@ -2913,7 +2892,6 @@ fn most_work_reorg_depth99_tip_follow_capacity() {
     let gen = hub.tip_hash().unwrap();
     let mut tip = gen;
     let time = 1_600_000_000u32;
-    // Main chain tip at height 10.
     for h in 1..=10u32 {
         let b = mine(tip, time + h * 600, h);
         tip = b.block_hash();
@@ -2935,7 +2913,6 @@ fn most_work_reorg_depth99_tip_follow_capacity() {
         .unwrap()
         .1
         .timestamp;
-    // 99 blocks after height 1 → tip height 100.
     let mut branch = Vec::with_capacity(99);
     let mut p = fork_prev;
     let mut t = fork_time;

@@ -367,7 +367,8 @@ impl Orphanage {
                 }
             }
         }
-        // fifo may still hold txid if removed mid-list; leave stale ids (skipped on pop)
+        // The fifo can still name this txid when it was removed from the middle
+        // of the list. Leave that stale id. Pop skips ids that are already gone.
         Some(e.tx)
     }
 

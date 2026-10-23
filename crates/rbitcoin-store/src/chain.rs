@@ -648,7 +648,7 @@ impl HeaderTxsTable {
         if !had {
             return Ok(false);
         }
-        // Ensure array slots exist then zero (0 = no body).
+        // A zero first and count means this header has no Class A body.
         let idx = id - 1;
         if idx >= self.first.len() {
             return Ok(false);

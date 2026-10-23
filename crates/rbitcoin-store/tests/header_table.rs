@@ -47,7 +47,6 @@ fn header_put_get_by_hash_open_flush() {
     assert!(t.get_by_hash(&[9u8; 32]).unwrap().is_none());
     assert!(matches!(t.get(Fk::NULL), Err(StoreError::InvalidFk)));
     assert!(matches!(t.get(Fk(99)), Err(StoreError::NotFound)));
-    // short decode
     assert!(matches!(
         HeaderRecord::decode(&[0u8; 10]),
         Err(StoreError::Corrupt(_))
@@ -170,7 +169,7 @@ fn ensure_rejects_duplicate_hash_with_divergent_prev_and_false_parent_edge() {
     let dir = tmp();
     let t = HeaderTable::create_tiny(&dir).unwrap();
 
-    // G (null prev, synthetic hash) → A → B → C (real linked hashes).
+    // The chain is G with a null prev, then A, B, and C with real parent hashes.
     let g = sample([0x11; 32]);
     let g_fk = t.ensure(&g).unwrap();
     let a = linked_child(&g, g_fk, 1);
@@ -184,7 +183,6 @@ fn ensure_rejects_duplicate_hash_with_divergent_prev_and_false_parent_edge() {
     // Poison: re-insert G's identity with prev_fk = C (false parent).
     let mut poison = g.clone();
     poison.prev_fk = c_fk;
-    // Same hash as G; gate must return G's fk and not append.
     let again = t.ensure(&poison).unwrap();
     assert_eq!(again, g_fk, "same hash must not create a second row");
     assert_eq!(t.count(), 4, "duplicate hash must not grow the table");
@@ -202,7 +200,6 @@ fn ensure_rejects_duplicate_hash_with_divergent_prev_and_false_parent_edge() {
     );
     assert_eq!(t.count(), 4);
 
-    // Honest insert still works.
     let ok = t.ensure(&honest).unwrap();
     assert_eq!(t.count(), 5);
     assert_eq!(t.get(ok).unwrap().prev_fk, a_fk);
@@ -422,7 +419,7 @@ fn ensure_same_hash_twice_is_idempotent() {
     let h = sample([7u8; 32]);
     let fk1 = t.ensure(&h).unwrap();
     let mut h2 = h.clone();
-    h2.prev_fk = Fk(999); // divergent prev ignored on hit
+    h2.prev_fk = Fk(999); // A hash hit ignores a different prev_fk.
     let fk2 = t.ensure(&h2).unwrap();
     assert_eq!(fk1, fk2);
     assert_eq!(t.count(), 1);

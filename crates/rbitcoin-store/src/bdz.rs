@@ -674,7 +674,7 @@ pub fn load_g_page(
     Ok(need)
 }
 
-#[allow(clippy::too_many_arguments)] // IO/session args stay unbundled
+#[allow(clippy::too_many_arguments)] // The IO and session arguments stay unbundled.
 #[doc(hidden)]
 pub fn stream_or_load_pages(
     file: &File,
@@ -709,7 +709,7 @@ pub fn stream_or_load_pages(
     }
 }
 
-#[allow(clippy::too_many_arguments)] // IO/session args stay unbundled
+#[allow(clippy::too_many_arguments)] // The IO and session arguments stay unbundled.
 #[doc(hidden)]
 pub fn stream_g_pages(
     session: &mut crate::uring_session::UringSession,

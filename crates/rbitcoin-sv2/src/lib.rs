@@ -319,7 +319,7 @@ pub mod test_send_buffer {
             fn setsockopt(fd: i32, level: i32, opt: i32, val: *const i32, len: u32) -> i32;
             fn getsockopt(fd: i32, level: i32, opt: i32, val: *mut i32, len: *mut u32) -> i32;
         }
-        // linux/asm-generic/socket.h: SOL_SOCKET = 1, SO_SNDBUF = 7.
+        // On Linux, SOL_SOCKET is 1 and SO_SNDBUF is 7.
         let fd = stream.as_raw_fd();
         let val = n as i32;
         // SAFETY: `fd` is the accepted stream. `val` is one i32 and `len` is

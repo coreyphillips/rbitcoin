@@ -184,7 +184,7 @@ fn schema2_bad_slot_range_is_corrupt() {
         let mut slots = fs::read(dir.join("slots")).unwrap();
         let body_len = fs::metadata(dir.join("tx.body")).unwrap().len() as usize;
         let off = SLOTS_HEADER + 12;
-        let len = len.unwrap_or(body_len); // body_off > 0, so off+len > logical
+        let len = len.unwrap_or(body_len); // body_off is above zero, so the offset plus the length passes the logical end
         slots[off..off + 4].copy_from_slice(&(len as u32).to_le_bytes());
         fs::write(dir.join("slots"), slots).unwrap();
         let r = Mempool::open_or_create(&dir).err();

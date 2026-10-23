@@ -84,7 +84,7 @@ impl SpenderTable {
             return Err(StoreError::InvalidFk);
         }
         let packed = pack_spent_field(spending_tx_fk, vin)?;
-        // Single annotator role: load → write → publish count.
+        // One annotator appends this list, and the count is published only after the node bytes are written.
         let id = self.count.load(Ordering::Acquire) + 1;
         let mut buf = [0u8; SPENDER_RECORD_LEN];
         buf[0..8].copy_from_slice(&packed.to_le_bytes());

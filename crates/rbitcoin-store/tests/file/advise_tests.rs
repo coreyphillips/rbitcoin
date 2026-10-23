@@ -200,7 +200,7 @@ fn concurrent_readers_during_append_and_grow() {
     let _ = std::fs::remove_file(&path);
 }
 
-#[allow(clippy::cognitive_complexity)] // one fixture, many error arms
+#[allow(clippy::cognitive_complexity)] // One fixture covers many error arms.
 #[test]
 fn load_store_u32_u64_zero_range_trailing_and_open_errors() {
     static N: AtomicU64 = AtomicU64::new(0);

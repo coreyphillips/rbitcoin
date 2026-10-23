@@ -60,7 +60,7 @@ pub fn wave_join_is_dense(elig_count: usize, first_id: u64, last_id: u64) -> boo
     elig_count.saturating_mul(4) >= span
 }
 
-#[allow(clippy::type_complexity)] // packed (fk, range) / span row is the on-disk shape
+#[allow(clippy::type_complexity)] // The packed (fk, range) or span row is the on-disk shape.
 #[doc(hidden)]
 pub fn thin_join_txids_and_loc(
     store: &Store,
@@ -265,7 +265,7 @@ impl Query {
         Some(self.sptweaks_next_height()?.0.max(origin))
     }
 
-    #[allow(clippy::type_complexity)] // packed (fk, range) / span row is the on-disk shape
+    #[allow(clippy::type_complexity)] // The packed (fk, range) or span row is the on-disk shape.
     /// Commit tweak records for consecutive heights (a window) under the
     /// index write-behind lock. Returns heights committed; 0 when the table's
     /// next height or a `confirmed[h]` moved (a reorg).
@@ -334,7 +334,7 @@ impl Query {
         t.put_block(height, records)
     }
 
-    #[allow(clippy::type_complexity)] // packed (fk, range) / span row is the on-disk shape
+    #[allow(clippy::type_complexity)] // The packed (fk, range) or span row is the on-disk shape.
     /// Consecutive heights: one body pwrite + one idx pwrite. Same checks as
     /// [`Self::put_sp_tweaks_block`] on each item; no-op if the first is not next.
     pub fn put_sp_tweaks_blocks(

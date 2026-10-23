@@ -814,7 +814,7 @@ impl IbdReadCtx {
     }
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 pub async fn read_ibd_peer(
     id: usize,
     magic: Magic,
@@ -941,7 +941,7 @@ pub async fn write_ibd_peer(
     }
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 pub async fn spawn_peer(
     id: usize,
     addr: rbitcoin_net::NetAddr,

@@ -7,7 +7,7 @@ fn u64_identity_hasher_is_raw_key_and_map_roundtrips_pack_scale() {
     let mut h = U64IdentityHasher::default();
     h.write_u64(0xdead_beef_cafe_u64);
     assert_eq!(h.finish(), 0xdead_beef_cafe_u64);
-    // Byte-path mix (Hash trait fallback for non-u64 keys).
+    // Non-u64 keys go through the Hash trait's byte path, not the u64 identity mix.
     let mut h2 = U64IdentityHasher::default();
     h2.write(&[0x01, 0x02, 0x03, 0x04]);
     assert_ne!(h2.finish(), 0);

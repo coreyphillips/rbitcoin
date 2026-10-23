@@ -888,7 +888,7 @@ impl<'a> SlotPageCache<'a> {
 
     #[doc(hidden)]
     pub fn flush(&mut self) -> Result<(), StoreError> {
-        // BTreeMap iterates in chunk/slot order → sequential writeback (map or pwrite).
+        // The map walks chunks in slot order, so the writeback is sequential.
         for (_, chunk) in self.chunks.iter_mut() {
             if chunk.dirty {
                 let off = HashHead::slot_file_off(chunk.base_slot);
@@ -927,7 +927,6 @@ pub fn merge_packed(multi: &MultiList, packed: u64, fk: Fk) -> Result<u64, Store
     if head == fk {
         return Ok(packed);
     }
-    // sole → multi: newest first
     let old_node = multi.append(head, Fk::NULL)?;
     let new_head = multi.append(fk, old_node)?;
     Ok(pack_multi(new_head))

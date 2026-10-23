@@ -96,7 +96,7 @@ pub fn ipv6_special_unroutable(v: Ipv6Addr) -> bool {
 #[doc(hidden)]
 pub fn ipv6_embedded_bogon(v: Ipv6Addr) -> bool {
     let o = v.octets();
-    // Teredo. Client IPv4 is bit-flipped; server, flags, and port are free.
+    // This is Teredo. The client IPv4 is bit-flipped, and the server, flags, and port are free.
     if o[0] == 0x20 && o[1] == 0x01 && o[2] == 0x00 && o[3] == 0x00 {
         return true;
     }
@@ -105,7 +105,7 @@ pub fn ipv6_embedded_bogon(v: Ipv6Addr) -> bool {
         return ipv4_unroutable(Ipv4Addr::new(o[2], o[3], o[4], o[5]))
             || o[6..].iter().any(|&b| b != 0);
     }
-    // Well-known NAT64 `64:ff9b::/96`.
+    // This is the well-known NAT64 prefix `64:ff9b::/96`.
     if o[0] == 0x00
         && o[1] == 0x64
         && o[2] == 0xff
@@ -120,11 +120,11 @@ pub fn ipv6_embedded_bogon(v: Ipv6Addr) -> bool {
         return ipv4_unroutable(Ipv4Addr::new(o[12], o[13], o[14], o[15]))
             || o[6..12].iter().any(|&b| b != 0);
     }
-    // SIIT `::ffff:0:0:0/96`. Not IPv4-mapped `::ffff:0:0/96`.
+    // This is SIIT `::ffff:0:0:0/96`, not IPv4-mapped `::ffff:0:0/96`.
     if o[..8].iter().all(|&b| b == 0) && o[8] == 0xff && o[9] == 0xff && o[10] == 0 && o[11] == 0 {
         return ipv4_unroutable(Ipv4Addr::new(o[12], o[13], o[14], o[15]));
     }
-    // Deprecated IPv4-compatible `::/96`.
+    // This is the deprecated IPv4-compatible prefix `::/96`.
     if o[..12].iter().all(|&b| b == 0) {
         return ipv4_unroutable(Ipv4Addr::new(o[12], o[13], o[14], o[15]));
     }

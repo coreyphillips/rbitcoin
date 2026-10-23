@@ -268,7 +268,8 @@ impl TxGraph {
         self.invalidate_chunk_cache();
         self.worst_chunks.clear();
         self.worst_rep_rate.clear();
-        // ponytail: one cluster walk per live tx, startup-only config.
+        // One walk per live transaction is fine here. This runs only when the
+        // sigop setting changes, not on each admission.
         let ids: Vec<Txid> = self.entries.keys().copied().collect();
         for t in ids {
             self.index_cluster_of(&t);
@@ -923,7 +924,8 @@ impl TxGraph {
             let pick = match best_rate_fee_txid {
                 Some((_, _, t)) => t,
                 None => {
-                    // Cycle or bug — emit remaining in txid order.
+                    // Nothing was ready, so the remainder is a cycle or a bug.
+                    // Emit it in txid order.
                     let t = *remaining.iter().next().unwrap();
                     t
                 }
@@ -956,7 +958,8 @@ impl TxGraph {
                 };
                 acc_fee = acc_fee.saturating_add(i128::from(self.modified_fee(t, delta)));
                 acc_w = acc_w.saturating_add(e.adjusted_weight(self.bytes_per_sigop));
-                // acc/acc_w >= best/best_w  (longest prefix on a tie).
+                // On an equal feerate the longer prefix wins, so a tie keeps
+                // this end.
                 let better = best_w == 0
                     || acc_fee.saturating_mul(i128::from(best_w))
                         >= best_fee.saturating_mul(i128::from(acc_w));
@@ -1181,7 +1184,8 @@ impl TxGraph {
                 .map(|(t, _)| *t)
                 .collect();
             let batch = if ready.is_empty() {
-                // Cycle — force one.
+                // Nothing is ready, so the remainder is a cycle. Take one
+                // pending id so the walk still moves.
                 vec![*pending.keys().next().unwrap()]
             } else {
                 ready

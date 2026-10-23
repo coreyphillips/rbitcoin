@@ -168,7 +168,6 @@ fn tip_follow_locator_includes_tip_after_genesis() {
     hub.ensure_genesis().unwrap();
     let loc = tip_follow_locator(&hub);
     assert!(!loc.is_empty());
-    // Newest-first: tip hash is first.
     assert_eq!(loc[0], hub.tip_hash().unwrap());
     let _ = std::fs::remove_dir_all(dir);
 }
@@ -412,7 +411,6 @@ fn live_follow_dec_on_drop() {
         assert_eq!(c.load(Ordering::SeqCst), 2);
     }
     assert_eq!(c.load(Ordering::SeqCst), 1);
-    // None branch is a no-op drop.
     let _ = LiveFollowDec(None);
 }
 
@@ -473,23 +471,23 @@ fn cmpct_helpers_without_mempool_and_queue_out_closed() {
     hub.ensure_genesis().unwrap();
     assert!(hub.mempool().is_none());
 
-    // Closed channel → Protocol error.
+    // A closed channel returns a protocol error.
     let (tx, rx) = mpsc::unbounded_channel();
     drop(rx);
     assert!(queue_out(&tx, NetworkMessage::Verack).is_err());
     assert!(queue_getheaders(&tx, &hub, None, false, None).is_err());
 
-    // headers_for_peer empty store after genesis still returns (tip exists).
+    // An empty store that already has genesis still returns headers, because the tip exists.
     use bitcoin::p2p::message_blockdata::GetHeadersMessage;
     let gh = GetHeadersMessage::new(
         vec![hub.tip_hash().unwrap()],
         BlockHash::from_byte_array([0u8; 32]),
     );
     let hdrs = headers_for_peer(hub.cache.as_ref(), hub.query.as_ref(), &gh).unwrap();
-    // Beyond tip: empty headers is fine.
+    // A locator past the tip may return no headers.
     assert!(hdrs.is_empty() || !hdrs.is_empty());
 
-    // drain_pending empty is a no-op.
+    // Draining with nothing pending does nothing.
     let mut pb = PendingBlocks::new();
     let mut ph = HashMap::new();
     let (tx, _rx) = mpsc::unbounded_channel();
@@ -521,7 +519,7 @@ fn cmpct_helpers_without_mempool_and_queue_out_closed() {
             script_pubkey: ScriptBuf::from_bytes(vec![0x51]),
         }],
     };
-    // Second tx spends a nonexistent prevout → consensus reject.
+    // The second transaction spends a prevout that does not exist, so connect rejects it.
     let junk = Transaction {
         version: TxVersion::ONE,
         lock_time: LockTime::ZERO,
@@ -873,7 +871,7 @@ fn handle_peer_frame_control_and_inv_paths() {
         let magic = Magic::from(Network::Regtest);
         let raw = RawNetworkMessage::new(magic, msg);
         let full = serialize(&raw);
-        // 4 magic + 12 command + 4 len + 4 checksum + payload
+        // The wire header is 4 magic bytes, a 12-byte command, 4 length bytes, and 4 checksum bytes, then the payload.
         let command: [u8; 12] = full[4..16].try_into().unwrap();
         let payload = full[24..].to_vec();
         FramedMessage {
@@ -926,7 +924,7 @@ fn handle_peer_frame_control_and_inv_paths() {
         assert!(follow.send_cmpct);
         assert_eq!(follow.cmpct_version, 2);
 
-        // Drain outbound: Pong(42) + empty Addr at least.
+        // The outbound queue includes at least pong 42 and an empty addr.
         let mut saw_pong = false;
         let mut saw_addr = false;
         while let Ok(m) = out_rx.try_recv().map(PeerOut::expect_msg) {
@@ -945,7 +943,7 @@ fn handle_peer_frame_control_and_inv_paths() {
         assert!(saw_pong);
         assert!(saw_addr);
 
-        // GetHeaders from empty tip-beyond locator.
+        // This locator starts at our tip and stops at the all-zero hash, past the tip.
         use bitcoin::p2p::message_blockdata::GetHeadersMessage;
         let gh = GetHeadersMessage::new(
             vec![hub.tip_hash().unwrap()],
@@ -985,12 +983,12 @@ fn handle_peer_frame_control_and_inv_paths() {
         );
         assert!(hub.header_inv_challenge_pending());
 
-        // Headers message inserts pending + issues getdata.
+        // The headers message inserts the child as pending and issues getdata.
         let gen = hub
             .query
             .wire_header_at_height(rbitcoin_primitives::Height(0))
             .unwrap();
-        // Synthesize a child-looking header (not valid pow; just exercises map).
+        // This header looks like a child of genesis. Its proof of work is not valid; the map is what this exercises.
         use bitcoin::block::{Header, Version};
         use bitcoin::{CompactTarget, TxMerkleNode};
         let child = Header {
@@ -1011,9 +1009,9 @@ fn handle_peer_frame_control_and_inv_paths() {
         .await
         .unwrap();
         assert!(follow.pending_headers.contains_key(&child.block_hash()));
-        let _ = out_rx.try_recv(); // GetData
+        let _ = out_rx.try_recv();
 
-        // GetData for known tip block (cache miss → reconstruct).
+        // Getdata for the known tip misses the cache and reconstructs the block.
         let tip = hub.tip_hash().unwrap();
         handle_peer_frame(
             frame_for(NetworkMessage::GetData(vec![Inventory::WitnessBlock(tip)])),
@@ -1026,7 +1024,6 @@ fn handle_peer_frame_control_and_inv_paths() {
         .unwrap();
         assert_eq!(served_block(out_rx.try_recv().unwrap()).block_hash(), tip);
 
-        // CompactBlock getdata for tip.
         handle_peer_frame(
             frame_for(NetworkMessage::GetData(vec![Inventory::CompactBlock(tip)])),
             &hub,
@@ -1041,7 +1038,6 @@ fn handle_peer_frame_control_and_inv_paths() {
             NetworkMessage::CmpctBlock(_)
         ));
 
-        // GetBlockTxn with bad index → disconnect score.
         use bitcoin::bip152::BlockTransactionsRequest;
         handle_peer_frame(
             frame_for(NetworkMessage::GetBlockTxn(GetBlockTxn {
@@ -1059,7 +1055,7 @@ fn handle_peer_frame_control_and_inv_paths() {
         .unwrap();
         assert!(follow.ban_score >= BAN_SCORE_THRESHOLD);
 
-        // GetBlockTxn good index 0 (coinbase).
+        // Index 0 is the coinbase, so this getblocktxn is served.
         follow.ban_score = 0;
         handle_peer_frame(
             frame_for(NetworkMessage::GetBlockTxn(GetBlockTxn {
@@ -1129,7 +1125,7 @@ fn handle_peer_frame_control_and_inv_paths() {
             "getblocktxn past depth 10 must send a full block"
         );
 
-        // Unsolicited BlockTxn → mild ban.
+        // An unsolicited blocktxn adds a mild ban score. It does not disconnect.
         handle_peer_frame(
             frame_for(NetworkMessage::BlockTxn(BlockTxn {
                 transactions: BlockTransactions {
@@ -1146,7 +1142,7 @@ fn handle_peer_frame_control_and_inv_paths() {
         .unwrap();
         assert!(follow.ban_score >= 5);
 
-        // CmpctBlock without mempool → full getdata fallback.
+        // A compact block with no mempool falls back to a full getdata.
         let gen_block = hub
             .query
             .reconstruct_block_by_hash(&tip.to_byte_array())
@@ -1164,8 +1160,7 @@ fn handle_peer_frame_control_and_inv_paths() {
         )
         .await
         .unwrap();
-        // Already have tip → no getdata; if different hash would request.
-        // Genesis is already known so "already have" arm.
+        // The tip is already known, so this does not ask for getdata. A different hash would.
         let _ = out_rx.try_recv();
 
         // Unknown command (including the retired rbtpkg name) is a no-op.
@@ -1182,7 +1177,6 @@ fn handle_peer_frame_control_and_inv_paths() {
         .await
         .unwrap();
 
-        // SendCmpct with unsupported version is ignored.
         handle_peer_frame(
             frame_for(NetworkMessage::SendCmpct(SendCmpct {
                 send_compact: false,
@@ -1195,10 +1189,10 @@ fn handle_peer_frame_control_and_inv_paths() {
         )
         .await
         .unwrap();
-        assert!(follow.send_cmpct); // still true from earlier v2
+        // The earlier version-2 choice stays. Version 99 does not replace it.
+        assert!(follow.send_cmpct);
         assert_eq!(follow.cmpct_version, 2);
 
-        // Inventory::Block (non-witness) for unknown → GetHeaders.
         let want2 = BlockHash::from_byte_array([0xcc; 32]);
         handle_peer_frame(
             frame_for(NetworkMessage::Inv(vec![Inventory::Block(want2)])),
@@ -1214,7 +1208,6 @@ fn handle_peer_frame_control_and_inv_paths() {
             other => panic!("expected GetHeaders for unknown inv, got {other:?}"),
         }
 
-        // GetData for a block this node has never seen → notfound, not silence.
         handle_peer_frame(
             frame_for(NetworkMessage::GetData(vec![Inventory::WitnessBlock(
                 want2,
@@ -1285,7 +1278,6 @@ fn handle_peer_frame_control_and_inv_paths() {
             other => panic!("expected NotFound for header-only getdata, got {other:?}"),
         }
 
-        // Inv for known tip → no GetData.
         handle_peer_frame(
             frame_for(NetworkMessage::Inv(vec![Inventory::WitnessBlock(tip)])),
             &hub,
@@ -1297,7 +1289,6 @@ fn handle_peer_frame_control_and_inv_paths() {
         .unwrap();
         assert!(out_rx.try_recv().is_err());
 
-        // GetData Inventory::Block for tip (non-witness arm).
         handle_peer_frame(
             frame_for(NetworkMessage::GetData(vec![Inventory::Block(tip)])),
             &hub,
@@ -1309,7 +1300,7 @@ fn handle_peer_frame_control_and_inv_paths() {
         .unwrap();
         let _ = served_block(out_rx.try_recv().unwrap());
 
-        // Full Block message path: pending + drain_pending (AlreadyHave for tip).
+        // A full block for the tip is already confirmed. Drain treats it as AlreadyHave.
         let gen_block2 = hub
             .query
             .reconstruct_block_by_hash(&tip.to_byte_array())
@@ -1355,7 +1346,6 @@ fn handle_peer_frame_control_and_inv_paths() {
         .await
         .unwrap();
 
-        // Catch-all unknown command.
         handle_peer_frame(
             frame_for(NetworkMessage::Unknown {
                 command: bitcoin::p2p::message::CommandString::try_from("zzzzzz").unwrap(),
@@ -1849,12 +1839,13 @@ fn cmpct_helpers_with_mempool_skip_list_live() {
     rbitcoin_consensus::grind_regtest_pow(&mut block.header);
 
     let hsi = HeaderAndShortIds::from_block(&block, 0xbeef, 2, &[]).unwrap();
-    // Mempool present but empty live → Some(missing) not None.
+    // A mempool with nothing live returns the missing indexes. It does not return None.
     let missing = match try_reconstruct_cmpct(&hub, &hsi, 2) {
         Some(CmpctReconstruct::NeedTxn(p, _)) => p.missing().to_vec(),
         other => panic!("expected NeedTxn, got {other:?}"),
     };
-    assert_eq!(missing, vec![1]); // spend short-id missing
+    // Index 1 is the non-coinbase spend whose short id was not filled.
+    assert_eq!(missing, vec![1]);
     let mp = hub.mempool().unwrap();
     let _ = mp.sample_reset_perf();
     let _ = try_reconstruct_cmpct(&hub, &hsi, 2);
@@ -2047,14 +2038,14 @@ fn p2p_side_chain_reorgs_via_held_bodies() {
         block
     };
 
-    // Main tip height 2 (times near genesis MTP window).
+    // The main tip is height 2, with times near the genesis median-time window.
     let b1 = mine(gen, 1_300_000_100, 1);
     hub.accept_block(b1.clone()).unwrap();
     let b2 = mine(b1.block_hash(), 1_300_000_200, 2);
     hub.accept_block(b2.clone()).unwrap();
     assert_eq!(hub.tip_height(), Some(2));
 
-    // Pending: short side from gen (1 block) + long side from gen (4 blocks).
+    // Pending holds a one-block side from genesis and a four-block side from genesis.
     let short = mine(gen, 1_300_001_000, 1);
     let mut long = Vec::new();
     let mut p = gen;
@@ -2163,7 +2154,7 @@ fn inv_of_already_asked_block_does_not_getdata() {
         assert_eq!(first, vec![hash], "header announce must getdata once");
         assert!(hub.already_have_or_asked_block(&hash));
 
-        // Second peer: empty local requested set, same hub (asked_blocks).
+        // The second peer has an empty local requested set. The hub still remembers the ask.
         let (out_tx2, mut out_rx2) = mpsc::unbounded_channel();
         let mut follow2 = PeerFollowState::new();
         handle_peer_frame(
@@ -3177,7 +3168,7 @@ async fn unknown_v2_short_id_counts_other_and_stays() {
         }
     };
     write_peer_msg(raw, NetworkMessage::Pong(first_ping)).await;
-    // short id 99 + compact-size string "d" (Core `msg_unrecognized`).
+    // Short id 99 plus a compact-size string `d` is Core's `msg_unrecognized` case.
     let unknown = [99u8, 1, b'd'];
     raw.write_contents(&unknown).await.unwrap();
     raw.write_contents(&unknown).await.unwrap();

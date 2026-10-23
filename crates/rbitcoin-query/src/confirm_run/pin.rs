@@ -265,7 +265,7 @@ pub fn reject_vout_past_n_out(
     Ok(())
 }
 
-#[allow(clippy::type_complexity)] // packed row / pin / script-hash tuple is the on-disk shape
+#[allow(clippy::type_complexity)] // The packed row, pin, and script-hash tuple is the on-disk shape.
 #[doc(hidden)]
 pub fn denserels_by_stamped_range(
     query: &Query,

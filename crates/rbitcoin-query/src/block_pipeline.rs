@@ -92,8 +92,8 @@ pub struct AssembleMeters {
     pub acc: AsmPrevoutAcc,
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
-#[allow(clippy::type_complexity)] // packed row / pin / script-hash tuple is the on-disk shape
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
+#[allow(clippy::type_complexity)] // The packed row, pin, and script-hash tuple is the on-disk shape.
 /// Sequential assemble: resolve prevout **content**, build script jobs, collect spends.
 ///
 /// Confirm IBD path: no durable spentness / maturity / BIP68 create-height
@@ -281,7 +281,7 @@ pub fn assemble_lock_time_cutoff(
     }
 }
 
-#[allow(clippy::too_many_arguments)] // one non-coinbase assemble; call site stays unbundled
+#[allow(clippy::too_many_arguments)] // This is one non-coinbase assemble, and the call site keeps the arguments unbundled.
 #[doc(hidden)]
 pub fn assemble_non_cb_tx(
     params: &ChainParams,
@@ -378,7 +378,7 @@ pub fn assemble_non_cb_tx(
     Ok(fee_sat)
 }
 
-#[allow(clippy::too_many_arguments)] // one non-coinbase input walk; call site stays unbundled
+#[allow(clippy::too_many_arguments)] // This is one non-coinbase input walk, and the call site keeps the arguments unbundled.
 #[doc(hidden)]
 pub fn assemble_non_cb_inputs(
     params: &ChainParams,
@@ -677,7 +677,7 @@ impl StructuralScratch {
     }
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 /// **Spentness:** pin denserels → abs + bulk 8-byte meta. Sparse durable-**spent**
 /// set (not unspent). Missing abs / short meta is hard `Err`. **Multi-list** after
 /// reorg annotate is a protocol cold walk (`has_confirmed_strong_spender_create`)
@@ -1039,7 +1039,7 @@ pub fn structural_load_durable_spent(
     Ok((multi_list_ns, spent_strong_ns))
 }
 
-#[allow(clippy::too_many_arguments)] // one spent-slot apply; call site stays unbundled
+#[allow(clippy::too_many_arguments)] // This is one spent-slot apply, and the call site keeps the arguments unbundled.
 pub fn structural_apply_one_meta(
     query: &Query,
     meta: Option<(rbitcoin_primitives::Fk, u8, u32)>,
@@ -1455,7 +1455,7 @@ pub struct ResolvedPrevout {
     pub create_fk: rbitcoin_primitives::Fk,
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 pub fn resolve_prevout(
     block: &Block,
     op: OutPoint,

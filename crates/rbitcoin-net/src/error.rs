@@ -87,7 +87,7 @@ impl NetError {
         match e {
             rbitcoin_consensus::ConsensusError::Cancelled => NetError::Cancelled,
             rbitcoin_consensus::ConsensusError::BadPrev => NetError::BadPrev,
-            // Pool-adapted store text. Not a block verdict.
+            // Internal errors are pool-adapted store text, not a block verdict.
             rbitcoin_consensus::ConsensusError::Internal(m) => NetError::store(m),
             other => NetError::Consensus(other.to_string()),
         }

@@ -60,7 +60,7 @@ fn head_insert_join_restore_empty_ok() {
 }
 
 /// Batch append: contiguous heights merge; gap returns Err(other).
-#[allow(clippy::cognitive_complexity)] // one fixture, many error arms
+#[allow(clippy::cognitive_complexity)] // One fixture covers many error cases, so this test stays in one function.
 #[test]
 fn script_ok_append_contiguous_and_gap() {
     use bitcoin::CompactTarget;
@@ -103,12 +103,11 @@ fn script_ok_append_contiguous_and_gap() {
     let err = a.append_contiguous(gap).expect_err("gap");
     assert_eq!(err.len(), 1);
     assert_eq!(a.len(), 2);
-    // Contiguous continue after gap reject.
+    // A later contiguous height still appends after the gap was rejected.
     let c = batch_one(12);
     assert!(a.append_contiguous(c).is_ok());
     assert_eq!(a.len(), 3);
 
-    // Empty other is no-op.
     assert!(a
         .append_contiguous(ScriptOkBatch {
             prepared: vec![],
@@ -121,7 +120,6 @@ fn script_ok_append_contiguous_and_gap() {
         .is_ok());
     assert_eq!(a.len(), 3);
 
-    // Empty self absorbs other.
     let mut empty = ScriptOkBatch {
         prepared: vec![],
         wire_blocks: vec![],
@@ -137,7 +135,6 @@ fn script_ok_append_contiguous_and_gap() {
     assert!(empty.approx_wire_bytes() > 0);
     assert_eq!(empty.parent_count(), 0);
 
-    // Wire/prepared length mismatch on contiguous height → Err(other).
     let mut good = batch_one(60);
     let mut bad = batch_one(61);
     bad.wire_blocks.clear();
@@ -622,7 +619,7 @@ fn expected_bits_extending_height0_and_no_retarget() {
     assert_eq!(ok.batch.approx_wire_bytes(), 0);
     assert_eq!(ok.batch.parent_count(), 0);
 
-    // check_bip34 wrong encoding
+    // This coinbase uses a height encoding that BIP34 rejects.
     use bitcoin::absolute::LockTime;
     use bitcoin::block::{Header, Version};
     use bitcoin::hashes::Hash;
@@ -720,7 +717,7 @@ fn expected_bits_extending_uses_header_plan_when_period_start_above_tip() {
     // only period-start is resolved from store/plan.
     let prev_bits = CompactTarget::from_consensus(0x1d00ffff);
     let prev_time = first_rec.timestamp.saturating_add(2015 * 600);
-    let retarget_h = Height(4032); // 2 * interval — needs first @ 2016
+    let retarget_h = Height(4032); // Two retarget intervals, so the period start is height 2016.
     assert_eq!(retarget_h.0 % interval, 0);
 
     let got = expected_bits_extending(&q, &params, retarget_h, prev_bits, prev_time, prev_time)
@@ -2046,7 +2043,6 @@ fn pin_for_wire_incomplete_outs_is_invariant_error() {
 
     let parent_id = 77u64;
     let parent_fk = Fk(parent_id);
-    // Spend needs vout 0 from parent_id.
     let spend_tx = TxRecord {
         txid: [0xCCu8; 32],
         version: 1,
@@ -3073,7 +3069,7 @@ fn direct_write_skips_create_pin_map_idx_without_recent() {
 
 /// One-shot load and stamp+load_from_plan must produce the same batch.
 #[test]
-#[allow(clippy::cognitive_complexity)] // one-shot and stamp-then-load share one fixture
+#[allow(clippy::cognitive_complexity)] // The one-shot load and the stamp-then-load path share one fixture.
 fn one_shot_load_matches_stamp_then_load_from_plan() {
     use rbitcoin_consensus::mine_empty_regtest;
     use rbitcoin_consensus::{ChainParams, Milestone};

@@ -301,13 +301,13 @@ impl TableKind {
             1 => Some(TableKind::Meta),
             2 => Some(TableKind::Header),
             3 => Some(TableKind::TxOut),
-            // 4, 5, 6 reserved (retired Input / Output / Point)
+            // Ids 4, 5, and 6 stay unused. They used to mean Input, Output, and Point.
             7 => Some(TableKind::StrongTx),
             8 => Some(TableKind::Confirmed),
             9 => Some(TableKind::ArrayLink),
             10 => Some(TableKind::HashHead),
             11 => Some(TableKind::ScriptHash),
-            // 12 reserved (retired TxHeight)
+            // Id 12 stays unused. It used to mean TxHeight.
             13 => Some(TableKind::Spender),
             14 => Some(TableKind::TxidBody),
             15 => Some(TableKind::SpTweaks),

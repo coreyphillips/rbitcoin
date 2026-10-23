@@ -29,7 +29,6 @@ fn eval_with_null_dummy(
             script_pubkey: ScriptBuf::from_bytes(vec![0x51]),
         }],
     };
-    // script_code points into script_bytes via Script::from_bytes
     let script = Script::from_bytes(script_bytes);
     let mut ctx = EvalContext::new(&tx, 0, Amount::from_sat(50_000), script, sig_version);
     ctx.null_dummy = null_dummy;
@@ -117,7 +116,7 @@ fn unexecuted_verif_still_rejects() {
 #[test]
 fn bare_op_success_byte_not_success_on_legacy() {
     // On legacy, 0x7e is disabled CAT, not SUCCESS.
-    assert!(!tapscript_has_op_success(Script::from_bytes(&[0x51]))); // no success
+    assert!(!tapscript_has_op_success(Script::from_bytes(&[0x51]))); // OP_1 is not an OP_SUCCESS opcode
     let script = vec![0x7e];
     assert!(eval(&script, SigVersion::Base).is_err());
 }
@@ -133,10 +132,10 @@ fn hex_literal(s: &str) -> Vec<u8> {
 #[test]
 fn strip_codeseparator_and_pushdata_lens() {
     // CODESEPARATOR (0xab) stripped; surrounding ops kept.
-    let script = vec![0x51, 0xab, 0x52]; // OP_1 CODESEPARATOR OP_2
+    let script = vec![0x51, 0xab, 0x52]; // the script is OP_1, OP_CODESEPARATOR, OP_2
     let stripped = strip_op_codeseparator(&script);
     assert_eq!(stripped, vec![0x51, 0x52]);
-    // PUSHDATA1 / 2 / 4 inside strip
+    // OP_PUSHDATA1, OP_PUSHDATA2, and OP_PUSHDATA4 payloads are skipped while stripping.
     let mut s = vec![0x4c, 0x02, 0xaa, 0xbb, 0xab, 0x51];
     let st = strip_op_codeseparator(&s);
     assert!(st.contains(&0x4c));
@@ -147,7 +146,7 @@ fn strip_codeseparator_and_pushdata_lens() {
     s = vec![0x4e, 0x01, 0x00, 0x00, 0x00, 0xdd];
     let st = strip_op_codeseparator(&s);
     assert_eq!(st.last(), Some(&0xdd));
-    // Truncated pushdata lengths break cleanly
+    // A truncated PUSHDATA length stops the strip instead of reading past the script.
     let _ = strip_op_codeseparator(&[0x4c]);
     let _ = strip_op_codeseparator(&[0x4d, 0x01]);
     let _ = strip_op_codeseparator(&[0x4e, 0x01, 0x00]);
@@ -161,12 +160,12 @@ fn tapscript_checksigadd_empty_sig_keeps_n() {
     // stack: empty_sig, n=2, unknown_key(1 byte) → CHECKSIGADD → n=2; OP_TRUE
     // Unknown key + empty sig → EmptySig path; push n.
     let script = vec![
-        0x00, // empty sig
-        0x52, // OP_2 (n)
-        0x01, 0xaa, // push 1-byte unknown key type
-        0xba, // OP_CHECKSIGADD
-        0x52, // OP_2
-        0x87, // OP_EQUAL
+        0x00, // OP_0 pushes an empty signature
+        0x52, // 0x52 is OP_2, the counter n
+        0x01, 0xaa, // a one-byte push is not a 32-byte key
+        0xba, // 0xba is OP_CHECKSIGADD
+        0x52, // 0x52 is OP_2
+        0x87, // 0x87 is OP_EQUAL
     ];
     let need = eval(&script, SigVersion::TapScript).expect("eval");
     assert!(need);
@@ -176,12 +175,12 @@ fn tapscript_checksigadd_empty_sig_keeps_n() {
 fn tapscript_checksigadd_unknown_key_nonempty_sig_increments() {
     // nonempty garbage sig + unknown key = Valid (soft-fork hook) → n+1
     let script = vec![
-        0x01, 0x01, // 1-byte sig (non-empty)
-        0x51, // OP_1 (n=1)
-        0x01, 0xaa, // unknown key
-        0xba, // CHECKSIGADD → 2
-        0x52, // OP_2
-        0x87, // EQUAL
+        0x01, 0x01, // a one-byte signature is non-empty
+        0x51, // 0x51 is OP_1, so n is 1
+        0x01, 0xaa, // a one-byte key is an unknown key type
+        0xba, // CHECKSIGADD on an unknown key counts as success and adds one
+        0x52, // 0x52 is OP_2, the expected total
+        0x87, // 0x87 is OP_EQUAL
     ];
     let need = eval(&script, SigVersion::TapScript).expect("eval");
     assert!(need);
@@ -197,14 +196,14 @@ fn tapscript_checksigadd_legacy_unknown() {
 
 #[test]
 fn tapscript_checkmultisig_disabled() {
-    let script = vec![0x00, 0x00, 0x00, 0x51, 0x51, 0xae]; // junk + CHECKMULTISIG
+    let script = vec![0x00, 0x00, 0x00, 0x51, 0x51, 0xae]; // junk stack items followed by CHECKMULTISIG
     let err = eval(&script, SigVersion::TapScript).unwrap_err();
     assert!(format!("{err}").contains("CHECKMULTISIG"));
 }
 
 #[test]
 fn tapscript_checksig_empty_pubkey_fails() {
-    // empty sig, empty pubkey (OP_0 OP_0 CHECKSIG)
+    // The script is OP_0, OP_0, CHECKSIG: an empty signature and an empty pubkey.
     let script = vec![0x00, 0x00, 0xac];
     let err = eval(&script, SigVersion::TapScript).unwrap_err();
     assert!(format!("{err}").contains("empty pubkey"));
@@ -249,9 +248,9 @@ fn tapscript_empty_pubkey_reports_weight_when_budget_exhausted() {
 #[test]
 fn tapscript_allows_scripts_over_10k() {
     // Legacy would reject; tapscript must accept (BIP342).
-    let mut script = vec![0x51]; // OP_TRUE
-    script.resize(10_001, 0x61); // pad with OP_NOP
-    script.push(0x51); // end with TRUE so cleanstack ok if executed
+    let mut script = vec![0x51]; // 0x51 is OP_TRUE
+    script.resize(10_001, 0x61); // 0x61 is OP_NOP, padding the script past the legacy size cap
+    script.push(0x51); // a final OP_1 leaves one true element if this script runs
                        // Actually NOPs leave stack; final TRUE needed as only element — start empty,
                        // fill with NOPs, end OP_1.
     let mut script = vec![0x61; 10_001];
@@ -415,7 +414,7 @@ fn witness_v0_nulldummy_follows_the_flag() {
 #[test]
 fn csv_fails_when_tx_version_below_2() {
     // Script: push 1, CSV, DROP, OP_TRUE — v1 must fail CSV version gate.
-    let script_bytes = [0x51u8, 0xb2, 0x75, 0x51]; // 1 CSV DROP TRUE
+    let script_bytes = [0x51u8, 0xb2, 0x75, 0x51]; // the script is OP_1, CSV, DROP, OP_TRUE
     let script = Script::from_bytes(&script_bytes);
     let mk = |ver: i32| Transaction {
         version: bitcoin::transaction::Version(ver),
@@ -423,7 +422,7 @@ fn csv_fails_when_tx_version_below_2() {
         input: vec![TxIn {
             previous_output: OutPoint::null(),
             script_sig: ScriptBuf::new(),
-            sequence: Sequence::from_consensus(0), // would fail real CSV
+            sequence: Sequence::from_consensus(0), // sequence 0 would fail a real CSV check of 1
             witness: Witness::new(),
         }],
         output: vec![TxOut {
@@ -440,7 +439,7 @@ fn csv_fails_when_tx_version_below_2() {
         script,
         SigVersion::Base,
         true,
-        true, // bip112 active
+        true, // BIP112 is active in this case
         true,
     );
     let mut stack1 = Vec::new();
@@ -450,7 +449,7 @@ fn csv_fails_when_tx_version_below_2() {
         "v1 must fail CSV version gate, got {err:?}"
     );
 
-    // v2: CSV enforces → fails with seq=0 vs csv=1
+    // Version 2 enforces CSV, so sequence 0 fails a lock of 1.
     let tx2 = mk(2);
     let ctx2 = EvalContext::new_with_flags(
         &tx2,
@@ -521,7 +520,7 @@ fn csv_fails_when_tx_version_below_2() {
 #[test]
 fn script_sig_pushes_op_n_and_1negate() {
     let mut stack = Vec::new();
-    // OP_0, OP_1NEGATE, OP_1, push bytes
+    // The script is OP_0, OP_1NEGATE, OP_1, and a one-byte push.
     let ss = Script::from_bytes(&[0x00, 0x4f, 0x51, 0x01, 0xaa]);
     eval_script_sig_pushes(ss, &mut stack).unwrap();
     assert_eq!(stack.len(), 4);
@@ -529,14 +528,13 @@ fn script_sig_pushes_op_n_and_1negate() {
     assert_eq!(stack[1], vec![0x81]);
     assert_eq!(stack[2], vec![0x01]);
     assert_eq!(stack[3], vec![0xaa]);
-    // Non-push opcode fails.
+    // CHECKSIG is not a push, so the scriptSig push parser rejects it.
     let mut s2 = Vec::new();
     assert!(eval_script_sig_pushes(Script::from_bytes(&[0xac]), &mut s2).is_err());
 }
 
 #[test]
 fn find_and_delete_pushdata_lengths() {
-    // Direct push
     let data = vec![0x11u8; 3];
     let mut script = vec![0x03];
     script.extend_from_slice(&data);
@@ -548,7 +546,7 @@ fn find_and_delete_pushdata_lengths() {
         vec![0x02, 0x00, 0x00, 0x51]
     );
 
-    // PUSHDATA1 needle
+    // The needle is encoded with OP_PUSHDATA1.
     let big = vec![0x22u8; 80];
     let mut sc = vec![0x4c, 80];
     sc.extend_from_slice(&big);
@@ -556,7 +554,7 @@ fn find_and_delete_pushdata_lengths() {
     let out2 = find_and_delete(&sc, &big);
     assert_eq!(out2, vec![0x52]);
 
-    // PUSHDATA2
+    // The needle is encoded with OP_PUSHDATA2.
     let bigger = vec![0x33u8; 300];
     let mut sc2 = vec![0x4d];
     sc2.extend_from_slice(&(300u16).to_le_bytes());
@@ -564,7 +562,7 @@ fn find_and_delete_pushdata_lengths() {
     sc2.push(0x53);
     assert_eq!(find_and_delete(&sc2, &bigger), vec![0x53]);
 
-    // Non-matching copy through PUSHDATA encodings
+    // A needle that matches neither push is copied through, including these PUSHDATA forms.
     let passthrough = vec![0x4c, 0x01, 0xaa, 0x4d, 0x01, 0x00, 0xbb];
     assert_eq!(find_and_delete(&passthrough, &[0xff]), passthrough);
 
@@ -649,7 +647,7 @@ fn strip_codeseparator_keeps_pushdata() {
 #[test]
 fn tapscript_has_op_success_pushdata_scan() {
     // OP_SUCCESS via direct byte after PUSHDATA1 skip
-    let leaf = vec![0x4c, 0x02, 0x00, 0x00, 0x7e]; // push 2 then OP_SUCCESS126
+    let leaf = vec![0x4c, 0x02, 0x00, 0x00, 0x7e]; // OP_PUSHDATA1 of two bytes, then OP_SUCCESS126
     assert!(tapscript_has_op_success(Script::from_bytes(&leaf)));
     let leaf2 = vec![0x4d, 0x01, 0x00, 0xff, 0x7e];
     assert!(tapscript_has_op_success(Script::from_bytes(&leaf2)));
@@ -679,8 +677,8 @@ fn tapscript_has_op_success_pushdata_scan() {
 
 #[test]
 fn cltv_type_mismatch_and_final_sequence() {
-    // locktime height vs time type mismatch
-    let script_bytes = [0x51u8, 0xb1, 0x75, 0x51]; // 1 CLTV DROP TRUE
+    // The transaction locktime is a time and the script operand is a height, so the types do not match.
+    let script_bytes = [0x51u8, 0xb1, 0x75, 0x51]; // the script is OP_1, CLTV, DROP, OP_TRUE
     let script = Script::from_bytes(&script_bytes);
     let tx = Transaction {
         version: bitcoin::transaction::Version::ONE,
@@ -711,7 +709,7 @@ fn cltv_type_mismatch_and_final_sequence() {
     assert!(format!("{err}").contains("CLTV"), "got {err}");
 
     // Final sequence rejects CLTV even when locktime ok
-    let script2 = Script::from_bytes(&[0x00, 0xb1, 0x75, 0x51]); // 0 CLTV DROP TRUE
+    let script2 = Script::from_bytes(&[0x00, 0xb1, 0x75, 0x51]); // the script is OP_0, CLTV, DROP, OP_TRUE
     let tx2 = Transaction {
         version: bitcoin::transaction::Version::ONE,
         lock_time: LockTime::from_height(10).unwrap(),
@@ -755,7 +753,7 @@ fn checkmultisig_verify_fail_and_tapscript_disabled() {
         msg.contains("CHECKMULTISIG") || msg.contains("NULLDUMMY") || msg.contains("stack"),
         "{msg}"
     );
-    // Tapscript: CHECKMULTISIG disabled
+    // Tapscript rejects CHECKMULTISIG.
     let err2 = eval(&[0x00, 0x00, 0x00, 0xae], SigVersion::TapScript).unwrap_err();
     assert!(
         format!("{err2}").contains("CHECKMULTISIG") || format!("{err2}").contains("disabled"),
@@ -792,7 +790,7 @@ fn checksigverify_then_op1_does_not_succeed() {
         0xd8, 0xc1, 0x91, 0x6d, 0x3c, 0xef, 0x99, 0xaa, 0x43, 0x1a, 0x56, 0xd2, 0x53, 0xe6, 0x92,
         0x56, 0xda, 0xc0,
     ]);
-    script.extend_from_slice(&[0xad, 0x51]); // CHECKSIGVERIFY 1
+    script.extend_from_slice(&[0xad, 0x51]); // CHECKSIGVERIFY, then OP_1
     let err = eval(&script, SigVersion::Base).unwrap_err();
     assert!(
         format!("{err}").contains("CHECKSIGVERIFY"),
@@ -802,7 +800,7 @@ fn checksigverify_then_op1_does_not_succeed() {
     // Same with CHECKSIG (not VERIFY): false then 1 → script succeeds.
     let mut soft = script.clone();
     let n = soft.len();
-    soft[n - 2] = 0xac; // CHECKSIG
+    soft[n - 2] = 0xac; // 0xac is CHECKSIG, not CHECKSIGVERIFY
     eval(&soft, SigVersion::Base).expect("CHECKSIG + OP_1 must succeed on a failed check");
 }
 
@@ -865,7 +863,7 @@ fn cltv_and_csv_negative_zero_is_not_negative() {
 
 #[test]
 fn cltv_negative_locktime_rejected() {
-    // OP_1NEGATE CLTV …
+    // The script is OP_1NEGATE, then CLTV.
     let script_bytes = [0x4fu8, 0xb1, 0x75, 0x51];
     let script = Script::from_bytes(&script_bytes);
     let tx = Transaction {
@@ -945,7 +943,7 @@ fn stack_size_limit_on_2dup() {
 
     // MAX_STACK_SIZE is typically 1000; push 999 ones then 2DUP overflows.
     let mut script = vec![0x51; 999];
-    script.push(0x6e); // OP_2DUP
+    script.push(0x6e); // 0x6e is OP_2DUP
     let err = eval(&script, SigVersion::WitnessV0).unwrap_err();
     assert!(
         format!("{err}").contains("stack") || format!("{err}").contains("size"),
@@ -959,9 +957,9 @@ fn stack_size_limit_on_2dup() {
 #[test]
 fn stack_and_altstack_share_max_size_on_pushdata() {
     let mut script = vec![0x51; 201];
-    script.extend(std::iter::repeat_n(0x6b, 201)); // OP_TOALTSTACK
+    script.extend(std::iter::repeat_n(0x6b, 201)); // 0x6b is OP_TOALTSTACK
     script.extend(std::iter::repeat_n(0x51, 799));
-    script.extend_from_slice(&[0x01, 0x01]); // PushBytes, not OP_1
+    script.extend_from_slice(&[0x01, 0x01]); // a direct push of 0x01 is not the OP_1 opcode
     let err = eval(&script, SigVersion::WitnessV0).unwrap_err();
     assert!(format!("{err}").contains("stack size"), "got {err}");
 

@@ -244,7 +244,7 @@ pub fn next_peer_id() -> usize {
     NEXT_PEER_ID.fetch_add(1, Ordering::Relaxed)
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 /// Dial up to `count` ranked candidates from `book`. `already` is exclude
 /// (slots + cooldown). `occupied` is live addrs whose netgroups are skipped
 /// while unused-group candidates remain.
@@ -686,7 +686,7 @@ pub fn disconnect_stalled_block_peers(
 }
 
 #[cfg_attr(not(debug_assertions), allow(dead_code))]
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 pub fn disconnect_stalled_block_peers_at(
     slots: &mut [PeerSlot],
     inflight: &mut HashMap<bitcoin::BlockHash, super::state::InflightReq>,
@@ -765,7 +765,7 @@ pub fn withholding_blocks(slot: &PeerSlot, now_ms: u64, stall_ms: u64) -> bool {
 /// Absolute stall ([`disconnect_stalled_block_peers`]) remains the zero-progress
 /// floor; this only cuts peers that keep making slow progress while the bulk
 /// is dramatically faster.
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 pub fn disconnect_relative_slow_block_peers(
     slots: &mut [PeerSlot],
     inflight: &mut HashMap<bitcoin::BlockHash, super::state::InflightReq>,
@@ -791,7 +791,7 @@ pub fn disconnect_relative_slow_block_peers(
     )
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 pub fn disconnect_relative_slow_block_peers_at(
     slots: &mut [PeerSlot],
     inflight: &mut HashMap<bitcoin::BlockHash, super::state::InflightReq>,

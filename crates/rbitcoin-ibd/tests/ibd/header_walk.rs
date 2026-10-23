@@ -1442,7 +1442,7 @@ fn a_failed_adopt_still_notes_the_queued_path() {
 /// so that arc is a second chapter on this hub. One peer alone is a
 /// third: nobody else can take the reservation.
 #[test]
-#[allow(clippy::cognitive_complexity)] // one hub, many reservation arms
+#[allow(clippy::cognitive_complexity)] // One hub covers many reservation cases, so this test stays in one function.
 fn two_peers_reserve_the_header_walk() {
     let (_dir, hub) = rbitcoin_net::chain::tiny_regtest_hub_labeled("header-walk-reserve");
     hub.ensure_genesis().unwrap();
@@ -1652,7 +1652,7 @@ fn two_peers_reserve_the_header_walk() {
     let (mut head, mut head_rx) = slot(5);
     let (mut other, mut other_rx) = slot(6);
     let (mut short, _short_rx) = slot(7);
-    // Asked once, and answered nothing yet.
+    // This peer was asked once and has not answered yet.
     let (mut unknown, _unknown_rx) = slot(12);
     head.first_data_ms = 50;
     other.first_data_ms = 5_000;
@@ -2359,7 +2359,7 @@ fn a_challenger_can_extend_past_the_current_tip() {
 /// period length is not regtest difficulty, and each checkpoint layout
 /// replaces the candidate the previous layout measured.
 #[test]
-#[allow(clippy::cognitive_complexity)] // one chain story, many context arms
+#[allow(clippy::cognitive_complexity)] // One chain story covers many context cases, so this test stays in one function.
 fn a_heavier_header_chain_keeps_its_context() {
     {
         let (_dir, mut hub) = rbitcoin_net::chain::tiny_regtest_hub_labeled("header-heavier-chain");

@@ -98,9 +98,9 @@ impl RpcCookiePerms {
         let mode = mode & 0o777;
         match self {
             Self::Owner => mode & 0o077 == 0,
-            // Group write/exec and every world bit. 0640 stays.
+            // Group may read. Group write or execute, and any world bit, fail, so 0640 stays valid.
             Self::Group => mode & 0o037 == 0,
-            // Group and world write/exec. 0644 stays.
+            // Group and world may read. Their write or execute bits fail, so 0644 stays valid.
             Self::All => mode & 0o033 == 0,
         }
     }

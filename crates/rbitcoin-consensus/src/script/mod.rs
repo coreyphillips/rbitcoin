@@ -410,8 +410,8 @@ pub mod crypto {
             return false;
         }
         let ht = sig_raw[sig_raw.len() - 1];
-        let base = ht & !0x80; // strip SIGHASH_ANYONECANPAY
-        (1..=3).contains(&base) // ALL=1 NONE=2 SINGLE=3
+        let base = ht & !0x80; // 0x80 is SIGHASH_ANYONECANPAY
+        (1..=3).contains(&base) // 1 is ALL, 2 is NONE, and 3 is SINGLE
     }
 
     /// STRICTENC: 02/03+32 or 04+64. Hybrid 06/07 keys are rejected.

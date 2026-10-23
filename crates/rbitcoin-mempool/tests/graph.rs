@@ -161,10 +161,9 @@ fn stock_above_matches_weight_above_on_best_first_chunks() {
 
 #[test]
 fn frontier_prefers_high_rate_chunks_and_depth() {
-    // Two independent txs: high rate then low rate.
     let mut g = TxGraph::new();
-    let a = spend_op([1u8; 32], 50_000, 40_000); // fee 10k, high rate
-    let b = spend_op([2u8; 32], 50_000, 49_000); // fee 1k, low rate
+    let a = spend_op([1u8; 32], 50_000, 40_000);
+    let b = spend_op([2u8; 32], 50_000, 49_000);
     let wa = a.weight().to_wu();
     let wb = b.weight().to_wu();
     g.insert(entry_for(&a, 10_000, 0), &a);
@@ -172,12 +171,11 @@ fn frontier_prefers_high_rate_chunks_and_depth() {
     let chunks = g.mining_chunks_best_first();
     assert!(chunks.len() >= 2);
     assert!(chunks[0].fee_rate_sat_per_kvb() >= chunks[1].fee_rate_sat_per_kvb());
-    // Small target hits high-rate chunk.
+    // A target of one weight unit falls in the higher-rate chunk.
     let r_hi = g.frontier_feerate_sat_per_kvb(1).unwrap();
     let r_deep = g.frontier_feerate_sat_per_kvb(wa + wb).unwrap();
     assert!(r_hi >= r_deep);
     assert!(g.weight_above_feerate(0) >= wa);
-    // Shared-slice helpers match full-graph methods (fee snapshot path).
     let ch = g.mining_chunks_best_first();
     assert_eq!(
         frontier_feerate_from_chunks(&ch, 1),
@@ -218,7 +216,6 @@ fn select_block_txids_empty_parent_before_child_and_weight_cap() {
             script_pubkey: ScriptBuf::from_bytes(vec![0x51]),
         }],
     };
-    // Child pays more than parent so its chunk ranks first — still emit parent first.
     g.insert(entry_for(&parent, 1_000, 0), &parent);
     g.insert(entry_for(&child, 10_000, 1), &child);
     let order = select_ids(&g, budget(TxGraph::template_tx_weight()), |_| 0);
@@ -364,7 +361,7 @@ fn select_budgets_sigops_skip_and_continue() {
     let (hid, lid) = (heavy.compute_txid(), light.compute_txid());
     let pool = |heavy_cost: u64| {
         let mut g = TxGraph::new();
-        // Budget only: keep heavy ranked first by raw feerate.
+        // With sigop adjustment off, the heavier fee stays first by raw feerate.
         g.set_bytes_per_sigop(0);
         let mut e = entry_for(&heavy, 10_000, 0);
         e.sigop_cost = heavy_cost;
@@ -474,13 +471,12 @@ fn parent_child_same_cluster_linearized() {
     g.insert(pe, &parent);
 
     let child = make_tx(Some((pid, 0)), 1, 3);
-    let ce = entry_for(&child, 5000, 1); // higher fee rate child
+    let ce = entry_for(&child, 5000, 1);
     let cid = ce.txid;
     g.insert(ce, &child);
 
     let c = g.cluster_of(&pid).unwrap();
     assert_eq!(c.members.len(), 2);
-    // Parent must come before child.
     assert_eq!(c.linearization, vec![pid, cid]);
 
     let ps = g.graph_stats(&pid).unwrap();
@@ -532,7 +528,8 @@ fn graph_stats_size_sums_per_tx_virtual_size() {
 
 #[test]
 fn diamond_cheap_parent_hot_children_cheap_sink_two_chunks() {
-    // a (cheap, 2 outs) → b,c (hot) → d (cheap). Prefix-maximal: [a,b,c] then [d].
+    // `a` is cheap and has two outputs. `b` and `c` are high-fee children of `a`,
+    // and `d` is a cheap descendant. The prefix-maximal chunks are [a, b, c], then [d].
     let mut g = TxGraph::new();
     let a = make_tx(None, 2, 1);
     let ae = entry_for(&a, 2_000, 0);
@@ -590,7 +587,6 @@ fn diamond_cheap_parent_hot_children_cheap_sink_two_chunks() {
 #[test]
 fn oversize_cluster_detected() {
     let mut g = TxGraph::new();
-    // Build a chain of MAX_CLUSTER_COUNT txs.
     let mut prev_id = txid_n(0xee);
     let mut last = txid_n(0);
     for i in 0..MAX_CLUSTER_COUNT {
@@ -602,7 +598,6 @@ fn oversize_cluster_detected() {
     }
     let c = g.cluster_of(&last).unwrap();
     assert_eq!(c.members.len(), MAX_CLUSTER_COUNT);
-    // New child would exceed count.
     let parents: BTreeSet<Txid> = [last].into_iter().collect();
     assert!(g.cluster_would_exceed(&parents, 1, 100));
 }
@@ -632,7 +627,6 @@ fn cluster_weight_cap_matches_core_101kvb() {
     assert_eq!(MAX_CLUSTER_WEIGHT, 404_000);
     let g = TxGraph::new();
     let empty = BTreeSet::new();
-    // Single-tx 200 kWU (~50 kvB) is under the cap.
     assert!(!g.cluster_would_exceed(&empty, 1, 200_000));
     // Single-tx 405 kWU exceeds (would also fail MAX_STANDARD_TX_WEIGHT=400k).
     assert!(g.cluster_would_exceed(&empty, 1, 405_000));
@@ -653,7 +647,6 @@ fn conflict_set_fee_weight_remove_and_worst() {
     let cid = ce.txid;
     g.insert(ce, &child);
 
-    // Missing cluster.
     assert!(g.cluster_of(&txid_n(0xff)).is_none());
 
     let direct = vec![pid];
@@ -666,7 +659,6 @@ fn conflict_set_fee_weight_remove_and_worst() {
 
     assert!(g.worst_chunk().is_some());
 
-    // Remove child then parent.
     assert!(g.remove(&cid, &child).is_some());
     assert!(!g.contains(&cid));
     assert!(g.remove(&pid, &parent).is_some());
@@ -759,7 +751,7 @@ fn chunk_rank_uses_sigop_adjusted_weight() {
     let light = spend_op([2u8; 32], 0, 2);
     let (hid, lid) = (heavy.compute_txid(), light.compute_txid());
     let mut he = entry_for(&heavy, 2_000, 0);
-    he.sigop_cost = 1_000; // 20_000 WU at 20 B/sigop
+    he.sigop_cost = 1_000; // one thousand sigops at 20 bytes each is 20_000 weight units
     g.insert(he, &heavy);
     g.insert(entry_for(&light, 1_000, 1), &light);
     let order = |g: &TxGraph| select_ids(g, budget(TxGraph::template_tx_weight()), |_| 0);
@@ -777,11 +769,11 @@ fn chunk_rank_uses_sigop_adjusted_weight() {
 
 #[test]
 fn block_min_fee_matches_core_getfee() {
-    // 200 vB paying 1 sat meets 1 sat/kvB (1e3 >= 200) and any zero floor.
+    // 800 weight units is 200 virtual bytes. One sat meets 1 sat/kvB because
+    // 1000 is at least 200, and it meets a zero floor. A zero fee does not.
     assert!(meets_block_min_feerate(1, 800, 1));
     assert!(meets_block_min_feerate(0, 800, 0));
     assert!(!meets_block_min_feerate(0, 800, 1));
-    // 250 vB at 1000 sat/kvB needs 250 sat.
     assert!(meets_block_min_feerate(250, 1000, 1000));
     assert!(!meets_block_min_feerate(249, 1000, 1000));
     // 40 sat/kvB on 111 vB (5 sat) must not meet a 50 sat/kvB floor.
@@ -826,7 +818,7 @@ fn select_weight_budget_is_raw_not_adjusted() {
     let b = spend_op([0x32u8; 32], 0, 2);
     for (i, tx) in [&a, &b].into_iter().enumerate() {
         let mut e = entry_for(tx, 10_000, i as u32);
-        e.sigop_cost = 1_000; // 20_000 WU adjusted, far above raw
+        e.sigop_cost = 1_000; // one thousand sigops adjust to 20_000 weight units, far above the raw weight
         g.insert(e, tx);
     }
     let cap = a.weight().to_wu() + b.weight().to_wu();
@@ -871,7 +863,7 @@ fn graph_stats_sizes_use_sigop_adjusted_vsize() {
     let pv = bitcoin::Weight::from_wu(parent.weight().to_wu()).to_vbytes_ceil();
     g.insert(entry_for(&parent, 500, 0), &parent);
     let mut ce = entry_for(&child, 500, 1);
-    ce.sigop_cost = 69; // 1_380 WU → 345 vB
+    ce.sigop_cost = 69; // 69 sigops are 1_380 weight units, which is 345 virtual bytes
     g.insert(ce, &child);
     let cs = g.graph_stats(&cid).unwrap();
     assert_eq!((cs.ancestorsize, cs.descendantsize), (pv + 345, 345));

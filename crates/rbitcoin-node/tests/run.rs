@@ -451,7 +451,7 @@ fn catch_up_retry_config_uses_production_not_for_test() {
         "the tip-follow supervisor owns the retry clock"
     );
     assert!(cfg.peers.is_some());
-    // Production class (main catch-up path), not for_test knobs.
+    // These fields are the production catch-up defaults, not the for_test knobs.
     assert_eq!(cfg.window, prod.window);
     assert_eq!(cfg.window, rbitcoin_ibd::DEFAULT_IBD_WINDOW);
     assert_eq!(cfg.per_peer, prod.per_peer);
@@ -612,7 +612,6 @@ fn shutdown_flag_and_node_handle_smoke() {
     assert!(!sd.requested());
     sd.request();
     assert!(sd.requested());
-    // Second request is idempotent.
     sd.request();
     assert!(sd.requested());
 

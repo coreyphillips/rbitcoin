@@ -30,10 +30,10 @@ fn strictenc_pubkey_and_hashtype_helpers() {
     assert!(!is_compressed_pubkey(&[0x02; 32]));
     assert!(!is_compressed_pubkey(&[0x04; 33]));
 
-    assert!(is_defined_hashtype(&[0x30, 0x01])); // ALL
-    assert!(is_defined_hashtype(&[0x30, 0x02])); // NONE
-    assert!(is_defined_hashtype(&[0x30, 0x03])); // SINGLE
-    assert!(is_defined_hashtype(&[0x30, 0x81])); // ALL|ACP
+    assert!(is_defined_hashtype(&[0x30, 0x01])); // 0x01 is SIGHASH_ALL
+    assert!(is_defined_hashtype(&[0x30, 0x02])); // 0x02 is SIGHASH_NONE
+    assert!(is_defined_hashtype(&[0x30, 0x03])); // 0x03 is SIGHASH_SINGLE
+    assert!(is_defined_hashtype(&[0x30, 0x81])); // 0x81 is SIGHASH_ALL with ANYONECANPAY
     assert!(!is_defined_hashtype(&[0x30, 0x00]));
     assert!(!is_defined_hashtype(&[0x30, 0x04]));
     assert!(!is_defined_hashtype(&[]));
@@ -42,45 +42,45 @@ fn strictenc_pubkey_and_hashtype_helpers() {
 #[test]
 fn bip66_encoding_edge_cases() {
     assert!(!is_valid_signature_encoding(&[]));
-    assert!(!is_valid_signature_encoding(&[0x30; 8])); // too short
-    assert!(!is_valid_signature_encoding(&[0x30; 74])); // too long
+    assert!(!is_valid_signature_encoding(&[0x30; 8])); // eight bytes is under the 9-byte minimum
+    assert!(!is_valid_signature_encoding(&[0x30; 74])); // 74 bytes is over the 73-byte maximum
     let mut bad = valid_der_sig();
     bad[0] = 0x31;
     assert!(!is_valid_signature_encoding(&bad));
-    // wrong total length byte
+    // Byte 1 is the DER content length, and 0x05 does not match the body.
     let mut bad = valid_der_sig();
     bad[1] = 0x05;
     assert!(!is_valid_signature_encoding(&bad));
-    // R not INT
+    // Byte 2 must be the integer marker 0x02.
     let mut bad = valid_der_sig();
     bad[2] = 0x03;
     assert!(!is_valid_signature_encoding(&bad));
-    // zero-length R
+    // The R integer length is zero.
     assert!(!is_valid_signature_encoding(&[
         0x30, 0x06, 0x02, 0x00, 0x02, 0x01, 0x01, 0x01
     ]));
-    // R high bit set (negative)
+    // The R integer has its high bit set, so it would be negative.
     let neg = vec![0x30, 0x07, 0x02, 0x01, 0x80, 0x02, 0x01, 0x01, 0x01];
     assert!(!is_valid_signature_encoding(&neg));
-    // excess leading zero on R
+    // R has a leading zero that is not required to keep the value positive.
     let pad = vec![0x30, 0x08, 0x02, 0x02, 0x00, 0x01, 0x02, 0x01, 0x01, 0x01];
     assert!(!is_valid_signature_encoding(&pad));
-    // S high bit
+    // The S integer has its high bit set, so it would be negative.
     let sneg = vec![0x30, 0x07, 0x02, 0x01, 0x01, 0x02, 0x01, 0x80, 0x01];
     assert!(!is_valid_signature_encoding(&sneg));
-    // excess leading zero on S
+    // S has a leading zero that is not required to keep the value positive.
     let spad = vec![0x30, 0x08, 0x02, 0x01, 0x01, 0x02, 0x02, 0x00, 0x01, 0x01];
     assert!(!is_valid_signature_encoding(&spad));
-    // zero-length S
+    // The S integer length is zero.
     assert!(!is_valid_signature_encoding(&[
         0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x00, 0x01
     ]));
-    // S marker wrong
+    // The S tag is not the integer marker.
     let mut sm = valid_der_sig();
-    sm[4] = 0x03; // after R len=1 at [3]=1, S tag at index 4
-                  // structure: [0]=30 [1]=06 [2]=02 [3]=01 [4]=R [5]=02 [6]=01 [7]=S [8]=ht
-                  // Actually valid_der is 30 06 02 01 01 02 01 01 01 so S tag at [5]
+    // Index 4 is R. Its length byte at index 3 is 1, so this write is not the S tag.
+    sm[4] = 0x03;
     let mut sm = valid_der_sig();
+    // The bytes are 30 06 02 01 01 02 01 01 01, so the S tag is at index 5.
     sm[5] = 0x03;
     assert!(!is_valid_signature_encoding(&sm));
 

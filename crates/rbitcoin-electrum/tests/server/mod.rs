@@ -105,7 +105,7 @@ fn config_helpers_and_param_parsers() {
     assert!(param_txid(&json!(["aabb"]), 0).is_err());
     assert!(param_txid(&json!(["zz".repeat(32)]), 0).is_err());
 
-    // get_history window: 1-arg open + mempool; finite to excludes mempool.
+    // One argument is an open window and includes the mempool. A finite to_height excludes it.
     let (f, mp) = parse_get_history_window(&json!([sh_hex])).unwrap();
     assert_eq!(f.from_height, 0);
     assert!(f.to_height.is_none());

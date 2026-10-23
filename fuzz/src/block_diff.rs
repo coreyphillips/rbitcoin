@@ -57,14 +57,14 @@ pub enum OracleReply {
 /// and `getchaintips` when it is not on the active chain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockStanding {
-    /// `confirmations > 0`, or chaintips `active`.
+    /// Active when confirmations are greater than zero, or chaintips status is `active`.
     Active,
-    /// Chaintips `valid-fork`: connected on a side chain.
+    /// Connected on a side chain (chaintips status `valid-fork`).
     ValidFork,
     /// Stored headers or body that Core has not connected (`valid-headers`,
     /// `headers-only`, or absent from the tip list).
     NotConnected,
-    /// Chaintips `invalid`.
+    /// Chaintips status `invalid`.
     Invalid,
 }
 
@@ -90,11 +90,11 @@ pub trait BlockOracle {
     fn best_block_hash(&self) -> Result<String, &'static str> {
         Err("no chain")
     }
-    /// `getblockheader` / `getchaintips` standing. `"no chain"` means unset.
+    /// Standing from `getblockheader` and `getchaintips`. `"no chain"` means unset.
     fn block_standing(&self, _hash: &str) -> Result<BlockStanding, &'static str> {
         Err("no chain")
     }
-    /// Core `testmempoolaccept` on one hex tx. Default unused.
+    /// Core `testmempoolaccept` for one hex transaction. The default implementation is unused.
     fn testmempoolaccept_hex(&self, hex: &str) -> OracleReply {
         let _ = hex;
         OracleReply::RpcError
@@ -109,9 +109,9 @@ pub trait BlockOracle {
 
 pub const DIFF_TEST_PAD_HEIGHT: u32 = 3;
 pub const DIFF_MATURE_PAD_HEIGHT: u32 = 100;
-/// Side-chain length vs a 1-block stem (deeper than the 2-block fork target).
+/// Side-chain length against a one-block stem, deeper than the two-block fork target.
 pub const DIFF_REORG_N: u32 = 3;
-/// Core `MAX_SCRIPT_SIZE` — truncate fuzzer scriptPubKey, do not skip.
+/// Core `MAX_SCRIPT_SIZE`. Truncate a fuzzer scriptPubKey instead of skipping the input.
 pub const SCRIPT_FUZZ_MAX: usize = 10_000;
 pub const DIFF_MUT_VERSION: u8 = 0x01;
 pub const DIFF_MUT_LOCKTIME: u8 = 0x02;
@@ -120,9 +120,9 @@ pub const DIFF_MUT_SCRIPT_SIG: u8 = 0x08;
 pub const DIFF_MUT_WITNESS: u8 = 0x10;
 pub const DIFF_MUT_ANNEX: u8 = 0x20;
 pub const DIFF_MUT_SHUFFLE: u8 = 0x40;
-/// `prepare_script_candidate` prefix: version + witness then scriptPubKey.
+/// The `prepare_script_candidate` prefix is the version, then the witness, then the scriptPubKey.
 pub const SCRIPT_FUZZ_CTRL: u8 = 0x80;
-/// Structured `{n_tx, has_witness, extra_size}` prefix for spend / height-1 prepare.
+/// Spend and height-1 prepare read a structured prefix of `n_tx`, `has_witness`, and `extra_size`.
 pub const BLOCK_STRUCT_CTRL: u8 = 0x81;
 /// Tail control byte (inputs longer than 16 bytes): compare a same-hash
 /// merkle mutant, then submit the honest block to both nodes.
@@ -244,7 +244,7 @@ fn store_reorg_accept(hub: &ChainHub, block: Block, expect_h: Option<u32>) -> Re
     }
 }
 
-/// One `{extend | sibling | rewind}` step. `Ok(true)` means a connect ran.
+/// One extend, sibling, or rewind step. `Ok(true)` means a connect ran.
 pub fn store_reorg_step(hub: &ChainHub, op: StoreReorgOp) -> Result<bool, String> {
     let height = hub.tip_height().ok_or("no tip height")?;
     let hash = hub.tip_hash().ok_or("no tip hash")?;
@@ -318,9 +318,9 @@ pub fn reopen_store_hub(hub: ChainHub, store_path: &Path) -> Result<ChainHub, St
     Ok(next)
 }
 
-/// Ops, then one reopen. The old `Query` is dropped before the new open.
-/// The tip hash must match. This input does not mine a maturity pad or ask
-/// Core: extend stops at height 32, and Core has none of this chain.
+/// Apply the ops, then reopen once. The old `Query` is dropped before the new
+/// open. The tip hash must match. This input does not mine a maturity pad or
+/// ask Core: extend stops at height 32, and Core has none of this chain.
 pub fn store_reorg_round(
     hub: ChainHub,
     store_path: &Path,
@@ -434,8 +434,8 @@ pub fn setup_side_block(
     submit_known_block(oracle, block, CORE_SIDE_STORED, "side submit", false)
 }
 
-/// Core-only side submit. Hub must not `accept_received_block` the sibling
-/// before child-first `drain_pending` (014 / 020).
+/// Submit the side block to Core only. The hub must not `accept_received_block`
+/// the sibling before child-first `drain_pending` (014 / 020).
 pub fn submit_side_to_oracle(oracle: &dyn BlockOracle, block: &Block) -> Result<(), &'static str> {
     submit_known_block(oracle, block, CORE_SIDE_STORED, "side submit", false)
 }
@@ -484,7 +484,8 @@ fn next_diff_cb_uniq() -> u32 {
     N.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
-/// BIP34 extra-nonce. Same-height coinbase txid + new create_fk fills one OA page.
+/// Stamp a BIP34 extra-nonce so a same-height coinbase txid and a new
+/// `create_fk` fill one OA page.
 fn stamp_diff_coinbase(block: &mut Block, uniq: u32) {
     if uniq == 0 || block.txdata.is_empty() || block.txdata[0].input.is_empty() {
         return;
@@ -1428,7 +1429,8 @@ fn park_reorg_stem(
         true,
     ) {
         Ok(()) => Ok(()),
-        // Hub already on stem: Core submit is best-effort (mock reject queues).
+        // When the hub is already on the stem, a Core submit error is ignored
+        // because mock reject queues are best-effort.
         Err(_) if on_stem => Ok(()),
         Err(e) => Err(e),
     }
@@ -2362,7 +2364,8 @@ mod tests {
             "mandatory-script-verify-flag-failed"
         ));
         assert!(!is_core_mempool_policy_skip("bad-txns-in-belowout"));
-        // Core v31.1 testmempoolaccept default maxfeerate (space, not max-fee).
+        // Core v31.1 `testmempoolaccept` names the default cap "max feerate
+        // exceeded" (a space), not "max-fee".
         assert!(is_core_mempool_policy_skip("max feerate exceeded"));
         assert!(is_core_mempool_policy_skip(
             "mempool-script-verify-flag-failed (Cleanstack)"
@@ -2590,15 +2593,7 @@ mod tests {
     #[test]
     fn store_reorg_three_ops_do_not_corrupt() {
         let (dir, hub, _tip) = tmp_diff_hub();
-        let n = store_reorg_apply(
-            &hub,
-            &[
-                0, // extend
-                1, // sibling
-                2, // rewind
-            ],
-        )
-        .expect("happy path");
+        let n = store_reorg_apply(&hub, &[0, 1, 2]).expect("happy path");
         assert!(n >= 1, "extend must connect n={n}");
         let probe = rbitcoin_store::StoreError::Corrupt("address head probe exhausted on insert");
         let e = NetError::Consensus(probe.to_string());
@@ -3265,7 +3260,8 @@ mod tests {
             header: fork_child_seed_block().header,
             txdata: vec![fork_child_seed_block().txdata[0].clone(), bad_tx],
         });
-        // side + extend NullAccept, child reject, then stem-park duplicate.
+        // The mock queue is a side NullAccept, an extend NullAccept, a child
+        // reject, then a stem-park duplicate.
         let reject = OracleReply::Reason("bad-txns-vin-empty".into());
         let dup = OracleReply::Reason("duplicate".into());
         let mock = MockOracle::new(OracleReply::NullAccept).queue(vec![

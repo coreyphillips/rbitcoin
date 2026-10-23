@@ -228,7 +228,7 @@ impl<R: AsyncRead + Unpin + Send> V2SessionReader<R> {
                 on_decoy(plaintext.len())?;
                 continue;
             }
-            // plaintext = 1-byte ignore header + application contents
+            // The first plaintext byte is an ignore header. The rest is the application message.
             if plaintext.is_empty() {
                 return Err(NetError::Protocol("empty v2 packet plaintext"));
             }
@@ -310,7 +310,7 @@ pub type V2Writer = ProtocolWriter<CountWrite<OwnedWriteHalf>>;
 /// Matches Bitcoin Core `V2_MESSAGE_IDS` (net.cpp).
 #[doc(hidden)]
 pub const SHORT_IDS: &[&str] = &[
-    "", // 0: long encoding follows
+    "", // Short id 0 is not a command. The long encoding follows.
     "addr",
     "block",
     "blocktxn",
@@ -339,7 +339,7 @@ pub const SHORT_IDS: &[&str] = &[
     "getcfcheckpt",
     "cfcheckpt",
     "addrv2",
-    // 29–36 unimplemented placeholders (empty)
+    // Short ids 29 through 36 are unimplemented, so those slots stay empty.
     "",
     "",
     "",
@@ -348,7 +348,7 @@ pub const SHORT_IDS: &[&str] = &[
     "",
     "",
     "",
-    "feature", // 37
+    "feature", // This slot is short id 37.
 ];
 
 #[doc(hidden)]
@@ -435,7 +435,7 @@ pub fn encode_v2_contents(payload: NetworkMessage) -> Result<Vec<u8>, NetError> 
         out.extend_from_slice(&body);
         Ok(out)
     } else {
-        // Long form: 0x00 + 12-byte ASCII command (null-padded) + payload.
+        // Short id 0 is the long form: a 12-byte null-padded ASCII command, then the payload.
         let mut out = Vec::with_capacity(1 + 12 + body.len());
         out.push(0);
         out.extend_from_slice(&command_to_12(&cmd));

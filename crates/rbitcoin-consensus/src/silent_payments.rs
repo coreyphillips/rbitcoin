@@ -199,7 +199,7 @@ pub fn extract_p2tr(spk: &[u8], witness: &Witness) -> Option<PublicKey> {
         return None;
     }
     let xonly = XOnlyPublicKey::from_slice(&spk[2..34]).ok()?;
-    // Even-Y lift (BIP340 / BIP-352 taproot inputs).
+    // Lift the x-only key with even Y. BIP340 and BIP-352 do that for taproot inputs.
     Some(xonly.public_key(Parity::Even))
 }
 

@@ -64,10 +64,10 @@ fn redial_budget_spends_only_dark_empty_rounds_and_waits_out_a_started_dial() {
 }
 
 /// all_peers_dead + catchup_complete edge matrix (mid-chain / caught-up / tip-0).
-#[allow(clippy::cognitive_complexity)] // one fixture, many exit arms
+#[allow(clippy::cognitive_complexity)] // One fixture covers many exit cases, so this test stays in one function.
 #[test]
 fn exit_and_catchup_complete_surface() {
-    // Mid-chain, all dead, no redial → give up.
+    // Mid-chain, with every peer dead and redial off, gives up.
     let mut mid = IbdWorkState::new(Vec::new(), None, Some(161_249));
     mid.max_peer_height = 958_820;
     mid.max_ready_height = 161_000;
@@ -80,7 +80,7 @@ fn exit_and_catchup_complete_surface() {
         AllPeersDead::WaitRedial
     );
 
-    // Caught up with no peers → complete.
+    // Caught up with no peers counts as catch-up complete.
     let mut done = IbdWorkState::new(Vec::new(), None, Some(100));
     done.max_peer_height = 100;
     done.max_ready_height = 100;
@@ -113,7 +113,7 @@ fn exit_and_catchup_complete_surface() {
         AllPeersDead::GiveUpMidCatchup
     );
 
-    // path_drained false when ordered is non-empty.
+    // path_drained is false when ordered is non-empty.
     let mut busy = IbdWorkState::new(Vec::new(), None, Some(10));
     busy.max_peer_height = 10;
     busy.max_ready_height = 10;
@@ -134,7 +134,7 @@ fn exit_and_catchup_complete_surface() {
     assert!(ibd_caught_up(&near, 100));
     near.max_ready_height = 105;
     assert!(!ibd_caught_up(&near, 100));
-    assert_eq!(header_lag_behind_peers(&near, 100), 0); // archived ≥ peer
+    assert_eq!(header_lag_behind_peers(&near, 100), 0); // Archived height is at least the peer height, so lag is zero.
 
     // Mainnet 08:16:23: ordered empty, headers_done, tip=horizon, 7 off-path
     // inflight. Remainder ignores leftover getdata — prune is hygiene only.
@@ -171,7 +171,7 @@ fn exit_and_catchup_complete_surface() {
 }
 
 /// Empty-headers lag WARN/reget cadence (mainnet log flood regression).
-#[allow(clippy::cognitive_complexity)] // one fixture, many lag cadence arms
+#[allow(clippy::cognitive_complexity)] // One fixture covers many lag-cadence cases, so this test stays in one function.
 #[test]
 fn empty_headers_lag_rate_limits() {
     assert!(should_log_empty_headers_lag(1));
@@ -193,7 +193,7 @@ fn empty_headers_lag_rate_limits() {
     let regets: u32 = (1..=64)
         .filter(|&s| should_rerequest_headers_on_empty_lag(s))
         .count() as u32;
-    assert_eq!(regets, 9); // 1,8,16,...,64
+    assert_eq!(regets, 9); // The regets are 1 and then 8, 16, 32, and 64.
 
     // Full store reseed is sparser than getheaders (O(headers) walk).
     assert!(should_reseed_work_path_on_empty_lag(1, true));
@@ -336,7 +336,7 @@ fn ibd_caught_up_transition_matrix() {
     hole.record_height(h(0x2a), 101);
     assert!(!ibd_caught_up(&hole, 100));
 
-    // Mid-chain on-path inflight.
+    // This case is mid-chain with inflight still on the path.
     let mut mid_inf = IbdWorkState::new(Vec::new(), None, Some(161_249));
     mid_inf.max_peer_height = 958_820;
     mid_inf.max_ready_height = 161_000;

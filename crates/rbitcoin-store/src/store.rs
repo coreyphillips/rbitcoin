@@ -965,7 +965,7 @@ impl Store {
             .put_full_batch_from_pins(items, index, spent_overlay)
     }
 
-    #[allow(clippy::too_many_arguments)] // same wave as append_stems_one_wave
+    #[allow(clippy::too_many_arguments)] // This takes the same arguments as the stem-append wave.
     /// Class A append. `input_edges[i]` is one [`crate::InputEdge`] per vin.
     /// `encode_in` writes `seqsigwit` for that row.
     pub fn put_tx_pins_encoded<P: crate::tx_table::PackedCreate>(

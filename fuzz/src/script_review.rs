@@ -306,7 +306,6 @@ pub fn cms_empty_sig_spend() -> (Vec<TxOut>, Transaction) {
     spk.push(0x21);
     spk.extend_from_slice(&pk);
     spk.extend_from_slice(&[0x52, 0xae, 0x91]);
-    // dummy, empty sig, empty sig
     spend(vec![0x00, 0x00, 0x00], spk, Witness::new())
 }
 
@@ -490,7 +489,8 @@ fn signet_block_bare_commitment() -> Block {
     }
 }
 
-/// `0xFE || u32-le flags || shape || payload`. Any other prefix skips.
+/// The input is `0xFE`, then a little-endian `u32` flag word, a shape, and a
+/// payload. Any other prefix skips.
 pub fn compare_kernel_bytes(data: &[u8]) -> Option<KernelCmp> {
     if data.first().copied() != Some(STRUCTURED) {
         return None;

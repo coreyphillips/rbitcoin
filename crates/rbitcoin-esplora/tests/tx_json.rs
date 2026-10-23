@@ -6,29 +6,26 @@ use rbitcoin_query::Query;
 use rbitcoin_query::testutil::FixtureChain;
 #[test]
 fn last_push_data_direct_and_pushdata() {
-    // OP_1 (non-push) clears last.
     assert!(last_push_data(&[0x51]).is_none());
-    // Direct push of 2 bytes.
     assert_eq!(last_push_data(&[0x02, 0xaa, 0xbb]), Some(&[0xaa, 0xbb][..]));
-    // Truncated direct push → break with no complete last from this op.
     assert!(last_push_data(&[0x03, 0xaa]).is_none());
-    // OP_PUSHDATA1
     assert_eq!(
         last_push_data(&[0x4c, 0x02, 0x11, 0x22]),
         Some(&[0x11, 0x22][..])
     );
-    assert!(last_push_data(&[0x4c]).is_none()); // missing length
-    assert!(last_push_data(&[0x4c, 0x05, 0x01]).is_none()); // truncated body
-                                                            // OP_PUSHDATA2
+    // PUSHDATA1 with no length byte is not a complete push.
+    assert!(last_push_data(&[0x4c]).is_none());
+    // The length byte asks for more data than follows.
+    assert!(last_push_data(&[0x4c, 0x05, 0x01]).is_none());
     assert_eq!(
         last_push_data(&[0x4d, 0x02, 0x00, 0x33, 0x44]),
         Some(&[0x33, 0x44][..])
     );
-    assert!(last_push_data(&[0x4d, 0x01]).is_none()); // short len field
-    assert!(last_push_data(&[0x4d, 0x03, 0x00, 0x01]).is_none()); // short body
-                                                                  // Non-push after push clears last.
+    // PUSHDATA2 needs two length bytes.
+    assert!(last_push_data(&[0x4d, 0x01]).is_none());
+    // The body is shorter than the length field says.
+    assert!(last_push_data(&[0x4d, 0x03, 0x00, 0x01]).is_none());
     assert!(last_push_data(&[0x01, 0xaa, 0x51]).is_none());
-    // Empty push then real push.
     assert_eq!(last_push_data(&[0x00, 0x01, 0xee]), Some(&[0xee][..]));
 }
 

@@ -85,7 +85,8 @@ fn decode_cmpct_hsi(raw: &[u8]) -> Option<HeaderAndShortIds> {
     deserialize(raw).ok()
 }
 
-/// Height-1 compact: prev is regtest genesis and header meets its own bits.
+/// A height-1 compact is connectable when its previous block is the regtest
+/// genesis and the header meets its own bits.
 pub fn cmpct_hsi_regtest_connectable(hsi: &HeaderAndShortIds) -> bool {
     let genesis = genesis_block(&ChainParams::regtest());
     if hsi.header.prev_blockhash != genesis.block_hash() {
@@ -868,9 +869,9 @@ mod tests {
 
     #[test]
     fn overnight_dup_prefill_corrupt_missing_is_1_and_4() {
-        // fuzz.yml 34852819510: `[2, 203, 4, 63]` → FLAG_FILL|DUP|CORRUPT,
-        // 3 extras, prefill abs 3. Ours requests [1, 4]; Core extra-txn
-        // filled the duplicate and only `getblocktxn` [1].
+        // Run 34852819510 input `[2, 203, 4, 63]` is FLAG_FILL|DUP|CORRUPT with
+        // three extras and prefill index 3, so we request 1 and 4 while Core's
+        // extra-txn fill of the duplicate only `getblocktxn`s 1.
         let case = prepare_cmpct_fuzz_case(&[2, 203, 4, 63]).unwrap();
         assert!(cmpct_hsi_regtest_connectable(&case.hsi));
         assert_eq!(
@@ -893,8 +894,8 @@ mod tests {
 
     #[test]
     fn overnight_fill_dup_requests_2_and_4() {
-        // fuzz.yml 35728126468: `[0, 251, 229, 55, 51, 13, 10]`
-        // ours [2, 4], Core getblocktxn [2].
+        // Run 35728126468 input `[0, 251, 229, 55, 51, 13, 10]` makes us request
+        // indexes 2 and 4 while Core `getblocktxn` is only index 2.
         let case = prepare_cmpct_fuzz_case(&[0, 251, 229, 55, 51, 13, 10]).unwrap();
         assert_eq!(
             cmpct_missing_for_case(&case).as_deref(),

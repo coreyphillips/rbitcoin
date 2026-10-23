@@ -657,13 +657,11 @@ fn open_repairs_body_leading_txid_count() {
     assert_eq!(t2.count(), 3);
     assert_eq!(t2.txid_sidefile().count(), 3);
     assert_eq!(t2.txstat.count(), 3);
-    // Kept prefix still readable.
     let tx = t2.get(Fk(1)).unwrap();
     assert_eq!(tx.txid[0], 1);
     let tx3 = t2.get(Fk(3)).unwrap();
     assert_eq!(tx3.txid[0], 3);
     assert!(t2.get(Fk(4)).is_err());
-    // Further appends work after repair.
     let mut txid = [0u8; 32];
     txid[0] = 99;
     let tx = TxRecord {
@@ -1306,7 +1304,6 @@ fn packed_output_spender_rels_multi_vout_one_walk() {
 #[test]
 fn denserels_layout_exact_matches_encode_decode_shapes() {
     let cases: Vec<(TxRecord, Vec<InputRecord>, Vec<OutputRecord>)> = vec![
-        // Coinbase + OP_TRUE out
         (
             TxRecord {
                 txid: [1u8; 32],
@@ -1318,7 +1315,6 @@ fn denserels_layout_exact_matches_encode_decode_shapes() {
             vec![InputRecord::coinbase(u32::MAX, vec![0x01, 0x02], vec![])],
             vec![OutputRecord::unspent(50, vec![0x51])],
         ),
-        // Non-final sequence, long script, multi-witness, multi-vout
         (
             TxRecord {
                 txid: [2u8; 32],
@@ -1484,7 +1480,6 @@ fn body_txid_thin_prefix_matches_fat_packed_body() {
     assert_eq!(from_thin, txid, "sidefile thin identity");
     let (_off, len) = t.seqsigwit_range(fk).unwrap();
     assert!(len > 50_000, "seqsigwit should hold the fat witness");
-    // Head resolve still works.
     assert_eq!(t.probe_body_match_fk(&txid).unwrap(), Some(fk));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -1526,7 +1521,6 @@ fn bulk_body_range_matches_sequential() {
                 .unwrap()[0],
         );
     }
-    // Unsorted + sparse sample still matches serial body_range.
     let mut shuffled = fks.clone();
     shuffled.reverse();
     let sparse = vec![shuffled[0], shuffled[3], shuffled[3], shuffled[7]];
@@ -1684,7 +1678,6 @@ fn streaming_resolve_early_exit_fewer_body_lookups() {
         let outputs = vec![OutputRecord::unspent(1, vec![0x51])];
         (rec, inputs, outputs)
     };
-    // Two creates of same txid → two cands; deepest (second) wins.
     let _fk1 = t.put_full_batch_indexed(&[mk(1)], true).unwrap()[0];
     let fk2 = t.put_full_batch_indexed(&[mk(2)], true).unwrap()[0];
     let batch = t.get_fk_by_txid_batch(&[txid]).unwrap();
@@ -1730,7 +1723,6 @@ fn get_fk_by_txid_batch_depth_wins_with_workers() {
         };
         let fk1 = t.put_full_batch_indexed(&[mk(1)], true).unwrap()[0];
         let fk2 = t.put_full_batch_indexed(&[mk(2)], true).unwrap()[0];
-        // Also resolve a few unrelated keys in the same bulk call.
         let mut extra = Vec::new();
         for i in 0u8..10 {
             let mut other = [0u8; 32];
@@ -1757,7 +1749,7 @@ fn get_fk_by_txid_batch_depth_wins_with_workers() {
         }
         let mut keys: Vec<[u8; 32]> = extra.iter().map(|(t, _)| *t).collect();
         keys.push(txid);
-        keys.push([0xff; 32]); // miss
+        keys.push([0xff; 32]); // This key was not inserted.
         let batch = t.get_fk_by_txid_batch(&keys).unwrap();
         let hit = batch
             .iter()
@@ -1837,7 +1829,6 @@ fn get_fk_by_txid_batch_matches_single() {
         let known = t.body_range(fk).unwrap();
         assert_eq!(pair.txout, known, "returned range must match create.loc");
     }
-    // Miss
     let miss = t.get_fk_by_txid_batch(&[[0xff; 32]]).unwrap();
     assert_eq!(miss[0].1, None);
     let _ = fks;
@@ -1898,7 +1889,6 @@ fn get_outs_denserels_by_range_sparse_need() {
     assert_eq!(live[0].1.script, vec![0x51, 0x52]);
     assert_eq!(sparse.len(), 1);
     assert_eq!(sparse[0].0, 1);
-    // Full decode for comparison.
     let full = decode_packed_tx_outs_with_spender_rels_secret(
         &{
             let (off, len) = t.body_range(fk).unwrap();
@@ -2174,7 +2164,6 @@ fn get_output_spender_metas_at_one_walk() {
         bulk[2].map(|(f, fl, _vin)| (f, fl & output_flags::MULTI_SPENDER != 0)),
         Some((Fk(20), false))
     );
-    // Both backends must agree.
     let mmap = t
         .get_spender_meta_at_abs_batch_backend(
             &abs,
@@ -2372,7 +2361,6 @@ fn input_flags_roundtrip() {
 
 #[test]
 fn input_rejects_legacy_local_prev() {
-    // flags: LOCAL_PREV | SEQ_FINAL | EMPTY_SCRIPT | EMPTY_WITNESS
     let flags = input_flags::PREV_ON_INPUTS
         | input_flags::SEQ_FINAL
         | input_flags::EMPTY_SCRIPT
@@ -2451,7 +2439,7 @@ fn output_run_roundtrip() {
     let mut enc = Vec::new();
     encode_output_run_secret(&run, &mut enc, None);
     assert_eq!(decode_output_run(&enc, 3).unwrap(), run);
-    // OP_TRUE + spender_field(8) + flags + uleb value
+    // An OP_TRUE output is an 8-byte spender field, flags, and a ULEB value, so the encoding stays small.
     let mut tiny = Vec::new();
     run[0].encode_into(&mut tiny);
     assert!(
@@ -2639,7 +2627,6 @@ fn seqsigwit_and_txout_secret_xor_roundtrip() {
         plain
     });
     let (dtx, douts, _) = decode_packed_tx_outs_with_spender_rels(&txout, 1).unwrap();
-    // Without secret, script stays obfuscated.
     assert_ne!(douts[0].script, outputs[0].script);
     assert_eq!(dtx.input_count, 0, "txout meta omits n_in");
     let (dtx2, douts2, _) =
@@ -2743,7 +2730,6 @@ fn address_head_get_by_txid() {
     ));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    // Force tiny address width for the test process.
     let t = create_tiny(&dir);
     let tx = TxRecord {
         txid: [0x42u8; 32],
@@ -2772,10 +2758,9 @@ fn address_head_get_by_txid() {
 }
 
 /// Dense encode/decode + error-arm coverage for packed Class A helpers.
-#[allow(clippy::cognitive_complexity)] // one fixture, many error arms
+#[allow(clippy::cognitive_complexity)] // One fixture covers many error arms.
 #[test]
 fn packed_encode_decode_flags_and_error_arms() {
-    // TxRecord short
     assert!(matches!(
         TxRecord::decode(&[0u8; 10]),
         Err(StoreError::Corrupt(_))
@@ -2793,7 +2778,6 @@ fn packed_encode_decode_flags_and_error_arms() {
     assert_eq!(dec.txid, meta.txid);
     assert_eq!(dec.version, -1);
 
-    // Output flag variants + decode errors
     let o_empty = OutputRecord::unspent(0, vec![]);
     let o_true = OutputRecord::unspent(1, vec![0x51]);
     let o_script = OutputRecord {
@@ -2816,7 +2800,6 @@ fn packed_encode_decode_flags_and_error_arms() {
         OutputRecord::decode_at(&[]),
         Err(StoreError::Corrupt(_))
     ));
-    // trailing on decode
     let mut trail = o_true.encode();
     trail.push(0xff);
     assert!(matches!(
@@ -2824,7 +2807,6 @@ fn packed_encode_decode_flags_and_error_arms() {
         Err(StoreError::Corrupt(_))
     ));
 
-    // Input coinbase + full + prevout skip + errors
     let coin = InputRecord::coinbase(u32::MAX, vec![], vec![]);
     assert!(coin.is_coinbase());
     let non_final = InputRecord {
@@ -2891,28 +2873,24 @@ fn packed_encode_decode_flags_and_error_arms() {
         InputRecord::decode_prevout_at(&[input_flags::PREV_ON_INPUTS]),
         Err(StoreError::Corrupt(_))
     ));
-    // non-coinbase create_fk truncated
     assert!(matches!(
         InputRecord::decode_at(&[0u8, 1, 2]),
         Err(StoreError::Corrupt(_))
     ));
-    // create_fk null on non-coinbase
-    let mut bad = vec![0u8]; // no NULL_PREV
+    let mut bad = vec![0u8]; // These flags omit NULL_PREV.
     bad.extend_from_slice(&0u64.to_le_bytes());
-    bad.push(0); // vout compact 0
+    bad.push(0); // The vout compact size is 0.
     assert!(matches!(
         InputRecord::decode_at(&bad),
         Err(StoreError::Corrupt(_))
     ));
-    // sequence truncated
-    let mut bad = vec![0u8]; // no SEQ_FINAL
+    let mut bad = vec![0u8]; // These flags omit SEQ_FINAL.
     bad.extend_from_slice(&1u64.to_le_bytes());
     bad.push(0);
     assert!(matches!(
         InputRecord::decode_at(&bad),
         Err(StoreError::Corrupt(_))
     ));
-    // trailing
     let mut trail = coin.encode();
     trail.push(1);
     assert!(matches!(
@@ -2920,7 +2898,6 @@ fn packed_encode_decode_flags_and_error_arms() {
         Err(StoreError::Corrupt(_))
     ));
 
-    // Packed encode/decode
     let tx = TxRecord {
         txid: [0xab; 32],
         version: 2,
@@ -2952,7 +2929,6 @@ fn packed_encode_decode_flags_and_error_arms() {
     assert_eq!(m4.txid, [0u8; 32]);
     assert_eq!(outs_rels.len(), 2);
     assert_eq!(rels.len(), 2);
-    // spender fields cleared
     assert!(outs_rels.iter().all(|o| o.spender_field.is_null()));
     let mut cleared = outs.clone();
     cleared[0].spender_field = Fk(9);
@@ -2962,7 +2938,6 @@ fn packed_encode_decode_flags_and_error_arms() {
     assert!(cleared[0].spender_field.is_null());
     assert!(!cleared[0].multi_spender);
 
-    // Packed error arms (short / truncated)
     assert!(matches!(
         decode_packed_tx_outs_with_spender_rels(&[0x02, 0, 0], 1),
         Err(StoreError::Corrupt(_))
@@ -2984,14 +2959,12 @@ fn packed_encode_decode_flags_and_error_arms() {
     trail_z.extend_from_slice(&[0u8; 7]);
     let (mz, _, _) = decode_packed_tx_outs_with_spender_rels(&trail_z, 2).unwrap();
     assert_eq!(mz.txid, [0u8; 32]);
-    // non-zero trailing garbage is rejected
     let mut trail = raw.clone();
     trail.push(0x01);
     assert!(matches!(
         decode_packed_tx_outs_with_spender_rels(&trail, 2),
         Err(StoreError::Corrupt(_))
     ));
-    // run helpers
     let mut run = Vec::new();
     encode_output_run_secret(&outputs, &mut run, None);
     let (decoded, used) = decode_output_run_prefix(&run, 2).unwrap();
@@ -3008,7 +2981,6 @@ fn packed_encode_decode_flags_and_error_arms() {
         Err(StoreError::Corrupt(_))
     ));
 
-    // Output value > i64::MAX (uleb overflow)
     {
         let mut bad = vec![output_flags::EMPTY_SCRIPT];
         // uleb128 of value that exceeds i64::MAX: 0xFF… with enough bytes
@@ -3019,9 +2991,8 @@ fn packed_encode_decode_flags_and_error_arms() {
             Err(StoreError::Corrupt(_))
         ));
     }
-    // decode_prevout_at: create_fk null, prev_index too large, truncated fk
     {
-        let mut null_fk = vec![0u8]; // no NULL_PREV
+        let mut null_fk = vec![0u8]; // These flags omit NULL_PREV.
         null_fk.extend_from_slice(&0u64.to_le_bytes());
         null_fk.push(0);
         assert!(matches!(
@@ -3033,7 +3004,6 @@ fn packed_encode_decode_flags_and_error_arms() {
             InputRecord::decode_prevout_at(&[0u8, 1, 2, 3]),
             Err(StoreError::Corrupt(_))
         ));
-        // prev_index too large: compact_size > u32::MAX
         let mut big_vout = vec![0u8];
         big_vout.extend_from_slice(&1u64.to_le_bytes());
         // compact size 0xFF → 8-byte length follows; use value > u32::MAX
@@ -3043,7 +3013,6 @@ fn packed_encode_decode_flags_and_error_arms() {
             InputRecord::decode_prevout_at(&big_vout),
             Err(StoreError::Corrupt(_))
         ));
-        // same for full decode_at
         assert!(matches!(
             InputRecord::decode_at(&big_vout),
             Err(StoreError::Corrupt(_))
@@ -3051,29 +3020,28 @@ fn packed_encode_decode_flags_and_error_arms() {
         // sequence truncated on decode_prevout (flags without SEQ_FINAL)
         let mut short_seq = vec![0u8];
         short_seq.extend_from_slice(&1u64.to_le_bytes());
-        short_seq.push(0); // vout 0
-                           // only 2 of 4 sequence bytes
+        short_seq.push(0); // The vout is 0.
+                           // Only two of the four sequence bytes are present.
         short_seq.extend_from_slice(&[1, 2]);
         assert!(matches!(
             InputRecord::decode_prevout_at(&short_seq),
             Err(StoreError::Corrupt(_))
         ));
-        // witness item truncated
         let mut short_wit = vec![
-            input_flags::SEQ_FINAL, // no EMPTY_WITNESS
+            input_flags::SEQ_FINAL, // The flags do not set EMPTY_WITNESS.
         ];
         short_wit.extend_from_slice(&1u64.to_le_bytes());
-        short_wit.push(0); // vout
+        short_wit.push(0); // The vout is 0.
         short_wit.push(0); // empty script via compact 0? flags don't have EMPTY_SCRIPT
-                           // Actually EMPTY_SCRIPT not set → need script len
-                           // Rebuild: SEQ_FINAL | no EMPTY_SCRIPT | no EMPTY_WITNESS
+                           // The flags above do not set EMPTY_SCRIPT, so a script length is required.
+                           // Rebuild with SEQ_FINAL and without EMPTY_SCRIPT or EMPTY_WITNESS.
         let mut short_wit = vec![input_flags::SEQ_FINAL];
         short_wit.extend_from_slice(&1u64.to_le_bytes());
-        short_wit.push(0); // vout
-        short_wit.push(0); // script len 0
-        short_wit.push(1); // 1 witness item
-        short_wit.push(5); // item len 5
-        short_wit.extend_from_slice(&[1, 2]); // only 2 bytes
+        short_wit.push(0); // The vout is 0.
+        short_wit.push(0); // The script length is 0.
+        short_wit.push(1); // The witness count is 1.
+        short_wit.push(5); // The witness item claims length 5.
+        short_wit.extend_from_slice(&[1, 2]); // Only two of those five bytes are present.
         assert!(matches!(
             InputRecord::decode_at(&short_wit),
             Err(StoreError::Corrupt(_))
@@ -3099,12 +3067,10 @@ fn packed_encode_decode_flags_and_error_arms() {
             decode_packed_tx_outs_with_spender_rels(&raw, 2),
             Err(StoreError::Corrupt(_))
         ));
-        // short scan
         assert!(matches!(
             TxRecord::decode_body_meta(&[0u8; 8]),
             Err(StoreError::Corrupt(_))
         ));
-        // non-zero trailing on outs_only path
         let mut good = Vec::new();
         encode_packed_tx_with_secret(
             &TxRecord {
@@ -3132,7 +3098,6 @@ fn packed_encode_decode_flags_and_error_arms() {
         assert_eq!(m.txid, [0u8; 32], "body decode leaves txid zero");
         assert_eq!(outs.len(), 1);
     }
-    // input run trailing
     {
         let mut irun = Vec::new();
         encode_input_run_secret(
@@ -3162,7 +3127,6 @@ fn body_txid_range_edges() {
     std::fs::create_dir_all(&dir).unwrap();
     let t = create_tiny(&dir);
     assert!(t.body_txid_range(10, 5).unwrap().is_empty());
-    // Beyond count → NotFound or empty ranges
     let _ = t.body_txid_range(1, 1);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -3429,7 +3393,7 @@ fn pread_two_spans_parallel_matches_serial() {
 #[test]
 fn bip30_duplicate_txid_seal_succeeds_and_resolves() {
     let dir = tempfile_dir("bip30-seal");
-    // 10-bit: max_keys = 819
+    // A 10-bit head seals at 819 keys.
     let layout = HeadLayout::new(10).unwrap();
     let t = TxTable::create_with_head_layout(&dir, layout).unwrap();
     let mut shared = [0u8; 32];
@@ -3543,7 +3507,7 @@ fn open_tags_a_meta_v1_head() {
 #[test]
 fn reopen_mid_segment_then_seal_no_fuse_fn() {
     let dir = tempfile_dir("reopen-seal-fn");
-    // 10-bit: max_keys = floor(0.8*1024) = 819
+    // A 10-bit head has 1024 slots, so the seal load is floor(0.8 * 1024) = 819 keys.
     let layout = HeadLayout::new(10).unwrap();
     let half = 400u64;
     {
@@ -3614,7 +3578,7 @@ fn reopen_mid_segment_then_seal_no_fuse_fn() {
 #[test]
 fn orphan_class_a_bodies_do_not_drop_head_entries_at_seal() {
     let dir = tempfile_dir("orphan-gap-seal");
-    // 8-bit: max_keys = floor(0.8*256) = 204.
+    // An 8-bit head has 256 slots, so the seal load is floor(0.8 * 256) = 204 keys.
     let layout = HeadLayout::new(8).unwrap();
     let rec = |i: u64| {
         let mut txid = [0u8; 32];
@@ -3770,9 +3734,9 @@ fn fat_creates_do_not_roll_head() {
 #[test]
 fn segmented_head_roll_and_lookup_via_tx_table() {
     let dir = tempfile_dir("seg-roll");
-    let layout = HeadLayout::new(10).unwrap(); // max_keys=819
+    let layout = HeadLayout::new(10).unwrap(); // max_keys for this 10-bit layout is 819.
     let t = TxTable::create_with_head_layout(&dir, layout).unwrap();
-    let n = 820u64; // one seal @ bits=10 (max_keys=819)
+    let n = 820u64; // 820 keys seals once at 10 bits, where max_keys is 819.
     let recs: Vec<TxRecord> = (0..n)
         .map(|i| {
             let mut txid = [0u8; 32];
@@ -3786,7 +3750,6 @@ fn segmented_head_roll_and_lookup_via_tx_table() {
             }
         })
         .collect();
-    // insert in chunks
     for chunk in recs.chunks(100) {
         t.put_full_batch_indexed(&meta_only_items(chunk), true)
             .unwrap();
@@ -3796,7 +3759,6 @@ fn segmented_head_roll_and_lookup_via_tx_table() {
         "segs={}",
         t.head_segment_count()
     );
-    // lookup first, mid, last
     for i in [1u64, 400, 819, 820] {
         let mut txid = [0u8; 32];
         txid[0..8].copy_from_slice(&i.to_le_bytes());
@@ -3813,7 +3775,6 @@ fn segmented_head_roll_and_lookup_via_tx_table() {
         txid[0..8].copy_from_slice(&i.to_le_bytes());
         assert_eq!(t2.probe_body_match_fk(&txid).unwrap(), Some(Fk(i)));
     }
-    // twice
     assert_eq!(
         t2.probe_body_match_fk(&{
             let mut x = [0u8; 32];

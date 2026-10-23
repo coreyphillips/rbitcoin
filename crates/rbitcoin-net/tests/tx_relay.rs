@@ -462,10 +462,12 @@ fn sh_index_insert_overwrite_and_remove_miss() {
     let t = Txid::from_byte_array([1u8; 32]);
     let sh = [2u8; 32];
     idx.insert(t, vec![sh]);
-    idx.insert(t, vec![sh]); // overwrite same mapping
+    // A second insert of the same txid overwrites that mapping.
+    idx.insert(t, vec![sh]);
     assert_eq!(idx.txs_for(&sh).count(), 1);
     idx.remove(&t);
-    idx.remove(&t); // miss
+    // Removing an id that is already gone is a miss.
+    idx.remove(&t);
     assert_eq!(idx.txs_for(&sh).count(), 0);
     assert!(idx.txs_for(&[3u8; 32]).next().is_none());
 }
@@ -901,7 +903,7 @@ fn open_recomputes_unknown_sigops_and_drops_unresolvable() {
     // Unknown sigop cost (schema-2 migrate): open recomputes it from
     // chain coins and drops the entry whose input is not a coin.
     let mp = tmp();
-    // OP_CHECKSIG output: one legacy sigop, cost 4.
+    // This output is one legacy OP_CHECKSIG, which costs 4 sigops.
     let ok = spend_true(cbs[0], 1_000, ScriptBuf::from_bytes(vec![0xac]));
     let gone = spend_true(Txid::from_byte_array([0xee; 32]), 1_000, spk.clone());
     {
@@ -932,7 +934,7 @@ fn open_recomputes_unknown_sigops_and_drops_unresolvable() {
 fn sigop_adjusted_weight_feeds_cluster_and_confirm_memory() {
     let (_store, q, cbs) = pad_cbs(12);
     let spk = ScriptBuf::from_bytes(vec![0x51]);
-    // Sigop-adjusted weight: max(400, 100 * 20) until bps is 0.
+    // Sigop-adjusted weight is the max of 400 and 100 times 20, until bytes-per-sigop is 0.
     let mp = tmp();
     let tx = spend_true(cbs[0], 1_000, spk.clone());
     let (tid, wtxid) = (tx.compute_txid(), tx.compute_wtxid());
@@ -954,7 +956,7 @@ fn sigop_adjusted_weight_feeds_cluster_and_confirm_memory() {
     assert_eq!(hub.cluster_rpc(&tid).unwrap().0, 400);
     assert_eq!(hub.get_live_adjusted_weight(&Txid::all_zeros()), None);
     hub.set_bytes_per_sigop(20);
-    // Confirmed feerate memory: 1_000 sat on 500 adjusted vB (raw 100).
+    // Confirmed feerate memory is 1_000 sat on 500 adjusted vbytes. The raw size is 100.
     hub.set_relay_enabled(true);
     assert_eq!(hub.remove_for_block(&[tid]), 1);
     assert_eq!(hub.confirm_memory_floor_sat_per_kvb(), Some(2_000));
@@ -1797,11 +1799,11 @@ fn remove_for_block_skipped_until_relay_then_purge() {
         0,
         "a mined delta drops while relay is off"
     );
-    // Enabling relay runs purge (empty → 0) and arms per-block strip.
+    // Turning relay on runs the purge. An empty pool purges nothing, and later blocks strip.
     mp.set_relay_enabled(true);
     assert!(mp.relay_enabled());
     assert_eq!(mp.purge_confirmed_on_chain(), 0);
-    // Still no-op for unknown txid, but path is live.
+    // Relay is on, and removing an unknown txid is still a no-op.
     assert_eq!(mp.remove_for_block(&[dummy]), 0);
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&store_dir);
@@ -1819,7 +1821,7 @@ fn hub_accept_remove_with_map_utxo_path() {
     hub.set_relay_enabled(true);
     assert!(hub.relay_enabled());
     assert_eq!(hub.live_count(), 0);
-    // Without chain UTXO, accept parks as orphan (soft path).
+    // With no chain UTXO, accept parks the transaction as an orphan. That is a soft outcome.
     let tx = Transaction {
         version: Version::TWO,
         lock_time: LockTime::ZERO,
@@ -3828,7 +3830,6 @@ fn estimate_fee_percentiles_and_spent_outpoints_empty() {
     let store_dir = tmp();
     let q = Query::open_or_create_tiny(&store_dir).unwrap();
     let hub = MempoolHub::open(&dir, Arc::new(q)).unwrap();
-    // Empty → negative estimate for all targets.
     assert!(hub.estimate_fee_btc_per_kb(1) < 0.0);
     assert!(hub.estimate_fee_btc_per_kb(5) < 0.0);
     assert!(hub.estimate_fee_btc_per_kb(100) < 0.0);
@@ -3879,7 +3880,7 @@ fn fee_snapshot_bulk_and_estimate_share_table() {
     let q = Query::open_or_create_tiny(&store_dir).unwrap();
     let hub = MempoolHub::open(&mp_dir, Arc::new(q)).unwrap();
     hub.set_relay_enabled(true);
-    // Empty pool: negative / unavailable for Electrum-style single target.
+    // An empty pool has no Electrum-style estimate for a single target.
     assert!(hub.estimate_fee_btc_per_kb(2) < 0.0);
     assert!(hub.estimate_fee_btc_per_kb(12) < 0.0);
     assert!(hub.fee_estimates_btc_per_kb().is_empty());
@@ -3971,7 +3972,7 @@ fn fee_history_file_survives_a_restart_and_drops_heights_off_the_chain() {
     assert_eq!((first.file_heights, first.retained_heights), (0, 0));
     assert_eq!(first.total_targets, 11);
     assert_eq!(first.ready_targets, 0);
-    // a connect after the preload goes to the journal
+    // A connect after the preload is written to the journal.
     rbitcoin_query::pad_empty_from(&q, &params, tip, tip_time, 6, 6, 0);
     hub.note_block_fee_history(Height(6));
     let journaled = fee_history_file::load(&mp_dir).unwrap().unwrap();

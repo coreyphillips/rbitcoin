@@ -1007,7 +1007,7 @@ fn named_params_getblock_object() {
         gh["message"].as_str().unwrap_or(""),
         "named params not supported; use array"
     );
-    assert_eq!(gh["code"], ERR_INVALID_PARAMETER); // height out of range
+    assert_eq!(gh["code"], ERR_INVALID_PARAMETER); // Height 0 on an empty store is out of range.
 
     let missing = dispatch(&ctx, "getblock", RpcParams::named(Default::default())).unwrap_err();
     assert_eq!(missing["code"], ERR_INVALID_PARAMS);
@@ -1016,7 +1016,7 @@ fn named_params_getblock_object() {
 
 #[test]
 fn hash_hex_display_matches_blockhash_display_and_reverses_parse() {
-    // Fixed non-palindrome internal bytes.
+    // Bytes increase with the index, so the internal order is not a palindrome of its reverse.
     let mut internal = [0u8; 32];
     for (i, b) in internal.iter_mut().enumerate() {
         *b = i as u8;
@@ -1026,14 +1026,12 @@ fn hash_hex_display_matches_blockhash_display_and_reverses_parse() {
     assert_eq!(disp, via_type);
     let back = parse_hash32_display(&disp).unwrap();
     assert_eq!(back, internal);
-    // Raw internal hex is not equal to display.
     assert_ne!(disp, rbitcoin_primitives::hex_encode(internal));
 }
 
 #[test]
 fn all_methods_callable_empty_or_error() {
     let (ctx, dir) = ctx_empty();
-    // Control / network always succeed on empty store.
     for m in [
         "uptime",
         "getnetworkinfo",
@@ -1045,14 +1043,14 @@ fn all_methods_callable_empty_or_error() {
     ] {
         let _ = dispatch(&ctx, m, vec![]).expect(m);
     }
-    // Empty store: no tip → difficulty errors.
+    // An empty store has no tip, so getdifficulty returns an error.
     let _ = dispatch(&ctx, "getdifficulty", vec![]);
     let _ = dispatch(&ctx, "getrawmempool", vec![json!(true)]).unwrap();
     let _ = dispatch(&ctx, "help", vec![json!("estimatesmartfee")]).unwrap();
     let _ = dispatch(&ctx, "help", vec![json!("getblockchaininfo")]).unwrap();
     let _ = dispatch(&ctx, "help", vec![json!("help")]).unwrap();
     let _ = dispatch(&ctx, "help", vec![json!("unknown_method_xyz")]).unwrap();
-    // Expected errors (missing params / missing blocks).
+    // These calls omit a parameter or name a block that is not in the store, so they error.
     for (m, params) in [
         ("getblockhash", vec![]),
         ("getblockhash", vec![json!(99)]),
@@ -1083,7 +1081,6 @@ fn all_methods_callable_empty_or_error() {
     let _ = dispatch(&ctx, "estimatesmartfee", vec![json!(6)]).unwrap();
     let _ = dispatch(&ctx, "getblockcount", RpcParams::named(Default::default())).unwrap();
     let _ = dispatch(&ctx, "nosuch", vec![]).unwrap_err();
-    // no mempool
     let ctx2 = RpcContext {
         query: Arc::clone(&ctx.query),
         mempool: None,

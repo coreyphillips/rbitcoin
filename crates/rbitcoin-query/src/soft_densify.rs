@@ -120,7 +120,7 @@ pub fn soft_confirm_window_covered(
     }
     let w = soft_confirm_window_n(rate_blocks_per_s);
     if w == 0 {
-        // Over free, rate unknown: treat as covered (no densify ahead).
+        // Over the free floor with an unknown rate, treat the window as covered so densify does not run ahead.
         return true;
     }
     depth_n >= w

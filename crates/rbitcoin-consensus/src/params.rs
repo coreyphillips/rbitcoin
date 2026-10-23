@@ -83,7 +83,7 @@ impl ChainParams {
             segwit_height_overlay: None,
             subsidy_halving_overlay: None,
             bip34_hash: Some(bip34_block_hash(
-                // Core `consensus.BIP34Hash`: mainnet block 227931.
+                // Core `consensus.BIP34Hash` for this network is mainnet block 227931.
                 "000000000000024b89b42a942fe0d9fea3bb44ab7bd1b19115dd6a759c0808b8",
             )),
         }
@@ -232,7 +232,6 @@ impl ChainParams {
         }
     }
 
-    /// BIP65 CLTV active?
     #[inline]
     pub fn bip65_active_at(&self, height: u32) -> bool {
         height >= self.btc.bip65_height

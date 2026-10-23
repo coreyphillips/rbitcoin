@@ -121,7 +121,7 @@ pub fn tweaks_for_txs<'a>(
     Ok(out)
 }
 
-#[allow(clippy::type_complexity)] // packed row / pin / script-hash tuple is the on-disk shape
+#[allow(clippy::type_complexity)] // The packed row, pin, and script-hash tuple is the on-disk shape.
 /// Tweaks-wire `TxTweak` from a stored 33-byte tweak + this tx’s packed outs.
 ///
 /// No parent IO. `Some(tweak)` with missing packed outs is corrupt.

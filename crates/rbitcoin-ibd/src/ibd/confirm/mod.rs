@@ -915,7 +915,7 @@ pub fn is_time_too_new(err: &str) -> bool {
     s.contains("timestamp too far in future") || s.contains("time-too-new")
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 #[doc(hidden)]
 pub fn emit_confirm_reject(
     tx: &std::sync::mpsc::Sender<ConfirmEvent>,
@@ -1100,7 +1100,7 @@ pub struct LoadBatch {
     pub gen: u32,
 }
 
-#[allow(clippy::type_complexity)] // packed row / pin / script-hash tuple is the on-disk shape
+#[allow(clippy::type_complexity)] // The packed row, pin, and script-hash tuple is the on-disk shape.
 /// Stamp inputs for one loadq run. Lookup `pres` must ride through (`Some`);
 /// load must not drop it and `from_tx` again.
 pub fn load_stamp_items(
@@ -1622,7 +1622,7 @@ impl ConfirmQueueDepths {
     }
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 /// Operator line for load stamp reject. Stamp-stage `missing prevout` is the
 /// leftover TipOnly miss remapped from `parent create_fk unresolved` — name
 /// that so a race is not logged as a bare invalid-block.
@@ -1997,11 +1997,11 @@ pub fn spawn_confirm_engine(
     let write_thr = std::thread::Builder::new()
         .name("ibd-confirm-write".into())
         .spawn(
-            #[allow(clippy::cognitive_complexity)] // confirm write OS pipeline
+            #[allow(clippy::cognitive_complexity)] // This closure is the confirm-write OS-thread pipeline.
             move || {
             info!("ibd: confirm write on dedicated OS thread");
             let stats = hub_wb.query.confirm_stats_arc();
-            // Non-contig leftover already note_write_recv'd; write it next iter.
+            // A non-contiguous leftover was already counted by note_write_recv, so the next iteration writes it.
             let mut leftover: Option<rbitcoin_query::ScriptOkBatch> = None;
             loop {
                 let t_recv = Instant::now();
@@ -2393,7 +2393,7 @@ pub fn spawn_confirm_engine(
     let load_join = std::thread::Builder::new()
         .name("ibd-confirm-load".into())
         .spawn(
-            #[allow(clippy::cognitive_complexity)] // confirm load OS pipeline
+            #[allow(clippy::cognitive_complexity)] // This closure is the confirm-load OS-thread pipeline.
             move || {
             info!(
                 "ibd: confirm load on dedicated OS thread (claim resolve-complete → stamp+pin)"
@@ -2813,7 +2813,7 @@ pub fn spawn_confirm_engine(
                         continue;
                     }
                 }
-                // Body HWM only — in-flight drop is the marked last-batch path above.
+                // This updates only the body high-water mark. Dropping in-flight layers is the marked last-batch path above.
                 lookup_ahead.sync_body_hwm(&hub_load);
             }
             drop(mat_tx);

@@ -30,7 +30,8 @@ fn rejects_bad_with_the_upstream_error() {
 
 #[test]
 fn p2a_scripthash_display_is_reversed_sha256_not_hash_display() {
-    // bc1pfeessrawgf. sha256::Hash Display is internal order.
+    // This output is bc1pfeessrawgf. `sha256::Hash` Display prints internal
+    // byte order, not the reversed hex this function returns.
     let spk = [0x51, 0x02, 0x4e, 0x73];
     let got = scripthash_display_hex(&spk);
     assert_eq!(

@@ -85,7 +85,7 @@ pub const CTRL_DRAIN_TIME_BUDGET: Duration = Duration::from_millis(5);
 #[doc(hidden)]
 pub const BODY_DRAIN_TIME_BUDGET: Duration = Duration::from_millis(40);
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 /// Non-blocking drain of archive results + peer events.
 ///
 /// **Priority:** body (`BlockFramed`/…) → headers.
@@ -1206,7 +1206,7 @@ pub fn apply_confirm_events(
     }
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 pub fn apply_confirm_reject(
     st: &mut IbdWorkState,
     height: u32,

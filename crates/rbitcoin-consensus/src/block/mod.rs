@@ -619,7 +619,7 @@ pub fn bip34_height_script(height: u32) -> Vec<u8> {
 /// Mainnet BIP16 exception block (never enforce P2SH redeem), Core `BIP16Exception`.
 /// Height 170060 — pre-activation spends of HASH160/EQUAL as bare scripts.
 pub const BIP16_EXCEPTION_MAINNET: [u8; 32] = [
-    // little-endian display hash 00000000000002dc756eebf4f49723ed8d30cc28a5f108eb94b1ba88ac4f9c22
+    // Display hash 00000000000002dc756eebf4f49723ed8d30cc28a5f108eb94b1ba88ac4f9c22, little-endian.
     0x22, 0x9c, 0x4f, 0xac, 0x88, 0xba, 0xb1, 0x94, 0xeb, 0x08, 0xf1, 0xa5, 0x28, 0xcc, 0x30, 0x8d,
     0xed, 0x23, 0x97, 0xf4, 0xf4, 0xeb, 0x6e, 0x75, 0xdc, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
@@ -637,7 +637,7 @@ pub const TAPROOT_EXCEPTION_MAINNET: [u8; 32] = [
 /// Testnet3 BIP16 exception block, Core `CTestNetParams` `script_flag_exceptions`.
 #[doc(hidden)]
 pub const BIP16_EXCEPTION_TESTNET3: [u8; 32] = [
-    // little-endian display hash 00000000dd30457c001f4095d208cc1296b0eed002427aa599874af7a432b105
+    // Display hash 00000000dd30457c001f4095d208cc1296b0eed002427aa599874af7a432b105, little-endian.
     0x05, 0xb1, 0x32, 0xa4, 0xf7, 0x4a, 0x87, 0x99, 0xa5, 0x7a, 0x42, 0x02, 0xd0, 0xee, 0xb0, 0x96,
     0x12, 0xcc, 0x08, 0xd2, 0x95, 0x40, 0x1f, 0x00, 0x7c, 0x45, 0x30, 0xdd, 0x00, 0x00, 0x00, 0x00,
 ];

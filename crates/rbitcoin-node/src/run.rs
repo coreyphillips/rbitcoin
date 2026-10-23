@@ -1137,7 +1137,8 @@ pub async fn run_p2p(config: NodeConfig) -> Result<(), NodeError> {
         let mut rpc_stop_tick = tokio::time::interval(Duration::from_millis(50));
         rpc_stop_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         rpc_stop_tick.tick().await;
-        // Persistent — a one-shot sleep in the select is reset by perf/RPC ticks.
+        // The stale check is an interval. A one-shot sleep in the select is
+        // reset by perf and RPC ticks.
         let mut stale_poll = tokio::time::interval(Duration::from_secs(STALE_POLL_SECS));
         stale_poll.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         stale_poll.tick().await;

@@ -500,7 +500,7 @@ pub fn read_blocks(
     Ok((blocks, in_window))
 }
 
-#[allow(clippy::too_many_arguments)] // one block's already-read spans
+#[allow(clippy::too_many_arguments)] // The arguments are one block's already-read spans.
 #[doc(hidden)]
 pub fn decode_block(
     table: &TxTable,
@@ -560,7 +560,7 @@ pub fn outside_parents(blocks: &[IndexBlock], in_window: &InWindow) -> Vec<u64> 
 
 /// Stage 3: parent `create.loc`, P2TR-output txs' `seqsigwit.body`, and
 /// (tweaks) parent txids. Fills each such tx's `inputs`.
-#[allow(clippy::too_many_arguments)] // stage inputs; one call site
+#[allow(clippy::too_many_arguments)] // These are the stage inputs, and there is one call site.
 #[doc(hidden)]
 pub fn read_witnesses_and_parent_locs(
     table: &TxTable,

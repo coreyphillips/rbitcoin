@@ -90,7 +90,7 @@ fn mtp_from_confirmed_chain_and_missing_above_tip() {
         prev = q.connect_block(Height(h), &hdr, &[ta]).unwrap();
     }
     let mtp = median_time_past(&q, Height(2)).unwrap();
-    // times: 1000, 1010, 1020 → middle 1010
+    // The block times are 1000, 1010, and 1020, so the median is 1010.
     assert_eq!(mtp, 1010);
     let (n, buf) = q
         .store()
@@ -122,7 +122,7 @@ fn mtp_from_confirmed_chain_and_missing_above_tip() {
     let (_fk, rec0) = q.header_at_height(Height(0)).unwrap().unwrap();
     assert_eq!(b1.to_consensus(), rec0.bits);
 
-    // Bad prev header height.
+    // Height 99 is not the previous header, so the next-bits lookup fails.
     assert!(expected_next_bits(&q, &params, Height(99), 0).is_err());
 
     let _ = std::fs::remove_dir_all(&dir);
@@ -172,7 +172,7 @@ fn validate_header_genesis_and_bad_prev() {
     let (dir, q) = temp_q();
     let params = ChainParams::regtest();
     let g = genesis_block(&params);
-    // Wrong genesis hash at height 0.
+    // Flipping the nonce makes the genesis hash wrong at height 0.
     let mut bad = g.header;
     bad.nonce ^= 1;
     let err = validate_header(&q, &params, Height(0), &bad).unwrap_err();
@@ -187,7 +187,6 @@ fn validate_header_genesis_and_bad_prev() {
     let (h1, ta1) = coinbase(1, prev, Some(h0.hash));
     q.connect_block(Height(1), &h1, &[ta1]).unwrap();
 
-    // Header with wrong prev hash at height 1.
     let mut hdr = g.header;
     hdr.prev_blockhash = bitcoin::BlockHash::from_byte_array([0xee; 32]);
     hdr.time = 2_000;

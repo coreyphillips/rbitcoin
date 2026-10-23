@@ -241,7 +241,7 @@ pub fn confirm_write_phase(
 
 /// [`confirm_write_phase`] that hands the batch back on error, so a caller
 /// that retries the wave can offer its bodies back.
-#[allow(clippy::result_large_err)] // the batch is the point of the error
+#[allow(clippy::result_large_err)] // The error exists to carry the batch.
 pub fn confirm_write_phase_or_return(
     query: &Query,
     params: &ChainParams,

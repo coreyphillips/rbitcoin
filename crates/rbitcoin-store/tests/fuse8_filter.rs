@@ -201,18 +201,16 @@ fn fuse8_wrapped_body_length_is_corrupt() {
 #[test]
 fn decode_body_rejects_absurd_fingerprint_len() {
     let mut body = Vec::new();
-    body.extend_from_slice(&1u64.to_le_bytes()); // seed
-    body.extend_from_slice(&64u32.to_le_bytes()); // seg_len
-    body.extend_from_slice(&63u32.to_le_bytes()); // mask
-    body.extend_from_slice(&64u32.to_le_bytes()); // count_len
-    body.extend_from_slice(&(600 * 1024 * 1024u64).to_le_bytes()); // absurd
-                                                                   // no fingerprints
+    body.extend_from_slice(&1u64.to_le_bytes()); // This field is the fuse seed.
+    body.extend_from_slice(&64u32.to_le_bytes()); // This field is the segment length.
+    body.extend_from_slice(&63u32.to_le_bytes()); // This field is the segment mask.
+    body.extend_from_slice(&64u32.to_le_bytes()); // This field is the segment-count length.
+    body.extend_from_slice(&(600 * 1024 * 1024u64).to_le_bytes());
     assert!(decode_body(&body).is_err());
 }
 
 #[test]
 fn decode_body_rejects_invalid_geometry_and_truncation() {
-    // Short header.
     assert!(decode_body(&[0u8; 10]).is_err());
     // Valid geometry header but fingerprints truncated.
     let mut body = Vec::new();
@@ -220,10 +218,10 @@ fn decode_body_rejects_invalid_geometry_and_truncation() {
     body.extend_from_slice(&64u32.to_le_bytes());
     body.extend_from_slice(&63u32.to_le_bytes());
     body.extend_from_slice(&64u32.to_le_bytes());
-    body.extend_from_slice(&8u64.to_le_bytes()); // claims 8 fps
-    body.extend_from_slice(&[1, 2, 3]); // only 3
+    body.extend_from_slice(&8u64.to_le_bytes()); // The header claims eight fingerprints.
+    body.extend_from_slice(&[1, 2, 3]); // Only three fingerprint bytes follow.
     assert!(decode_body(&body).is_err());
-    // segment_length == 0
+    // A segment length of zero is illegal geometry.
     let mut bad_seg = Vec::new();
     bad_seg.extend_from_slice(&1u64.to_le_bytes());
     bad_seg.extend_from_slice(&0u32.to_le_bytes());
@@ -231,11 +229,11 @@ fn decode_body_rejects_invalid_geometry_and_truncation() {
     bad_seg.extend_from_slice(&0u32.to_le_bytes());
     bad_seg.extend_from_slice(&0u64.to_le_bytes());
     assert!(decode_body(&bad_seg).is_err());
-    // mask != segment_length - 1
+    // The mask must be one less than the segment length. This header breaks that.
     let mut bad_mask = Vec::new();
     bad_mask.extend_from_slice(&1u64.to_le_bytes());
     bad_mask.extend_from_slice(&64u32.to_le_bytes());
-    bad_mask.extend_from_slice(&0u32.to_le_bytes()); // wrong mask
+    bad_mask.extend_from_slice(&0u32.to_le_bytes());
     bad_mask.extend_from_slice(&64u32.to_le_bytes());
     bad_mask.extend_from_slice(&0u64.to_le_bytes());
     assert!(decode_body(&bad_mask).is_err());
@@ -269,8 +267,7 @@ fn fuse_key_from_mixed_xors_quarters() {
     m[16] = 4;
     m[24] = 8;
     let k = fuse_key_from_mixed(&m);
-    assert_eq!(k, 1u64 ^ 2u64 ^ 4u64 ^ 8u64); // LE quarters xor
-                                              // All-zero → zero.
+    assert_eq!(k, 1u64 ^ 2u64 ^ 4u64 ^ 8u64); // The fuse key is the xor of the four little-endian quarters.
     assert_eq!(fuse_key_from_mixed(&[0u8; 32]), 0);
 }
 
@@ -288,7 +285,7 @@ fn roundtrip_v2_write_read_and_fingerprint_bytes() {
     assert!(g.contains(50));
     // Empty keys path builds dummy.
     let empty = SealedFuse8::build(&[]).unwrap();
-    assert!(empty.contains(0)); // dummy always built
+    assert!(empty.contains(0));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -301,7 +298,6 @@ fn open_unknown_version_is_corrupt() {
     raw.extend_from_slice(&0u64.to_le_bytes());
     std::fs::write(&path, &raw).unwrap();
     assert!(open_file(&path).is_err());
-    // Bad magic.
     std::fs::write(
         &path,
         b"XXXX\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",

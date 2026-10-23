@@ -131,7 +131,7 @@ fn p2sh_and_witness_sigop_paths() {
         script_pubkey: ScriptBuf::from_bytes(p2sh_spk),
     }];
     assert!(witness_sigop_count(&tx, &spks(&prevouts)) >= 1);
-    // P2SH bare redeem with CHECKSIG
+    // The redeem script is a bare CHECKSIG.
     let redeem2 = vec![0xac];
     let mut ss2 = vec![0x01];
     ss2.extend_from_slice(&redeem2);
@@ -194,7 +194,7 @@ fn p2sh_and_witness_sigop_paths() {
 
 #[test]
 fn last_push_and_p2sh_shape() {
-    // OP_1 push of 0xac (CHECKSIG) as redeem
+    // OP_1 pushes CHECKSIG, and that push is the redeem script.
     let ss = [0x01, 0xac];
     assert_eq!(last_script_push(&ss), Some(&[0xacu8][..]));
     let p2sh = {
@@ -211,8 +211,8 @@ fn last_push_and_p2sh_shape() {
 fn accurate_multisig_count() {
     // OP_2 <key> <key> <key> OP_3 OP_CHECKMULTISIG → 3 when accurate
     let redeem = vec![
-        0x52, // OP_2
-        0x21, // push 33
+        0x52, // 0x52 is OP_2
+        0x21, // 0x21 pushes 33 bytes
     ];
     let mut r = redeem;
     r.extend([0x02; 33]);
@@ -220,8 +220,8 @@ fn accurate_multisig_count() {
     r.extend([0x02; 33]);
     r.push(0x21);
     r.extend([0x02; 33]);
-    r.push(0x53); // OP_3
-    r.push(0xae); // CHECKMULTISIG
+    r.push(0x53); // 0x53 is OP_3
+    r.push(0xae); // 0xae is CHECKMULTISIG
     assert_eq!(script_sigop_count(&r, true), 3);
     assert_eq!(script_sigop_count(&r, false), 20);
 }
@@ -231,9 +231,9 @@ fn p2sh_sigops_from_redeem() {
     let mut p2sh_spk = vec![0xa9, 0x14];
     p2sh_spk.extend([0u8; 20]);
     p2sh_spk.push(0x87);
-    // redeem = single CHECKSIG
+    // The redeem script is one CHECKSIG.
     let redeem = [0xac];
-    let mut ss = vec![0x01]; // push 1 byte
+    let mut ss = vec![0x01]; // 0x01 is a one-byte push
     ss.extend_from_slice(&redeem);
     let tx = Transaction {
         version: TxVersion::TWO,
@@ -367,19 +367,19 @@ fn witness_sigops_gated_on_witness_flag() {
 #[test]
 fn script_sigop_pushdata_encodings_and_checksigverify() {
     // PUSHDATA1 / 2 / 4 skip payload without counting ops inside.
-    let mut s = vec![0x4c, 0x02, 0xac, 0xad]; // push 2 bytes that look like CHECKSIG
-    s.push(0xac); // real CHECKSIG after
+    let mut s = vec![0x4c, 0x02, 0xac, 0xad]; // the two bytes inside this push look like CHECKSIG but are data
+    s.push(0xac); // 0xac after the push is a real CHECKSIG
     assert_eq!(script_sigop_count(&s, false), 1);
 
     let mut s2 = vec![0x4d, 0x02, 0x00, 0xac, 0xad];
-    s2.push(0xad); // CHECKSIGVERIFY
+    s2.push(0xad); // 0xad is CHECKSIGVERIFY
     assert_eq!(script_sigop_count(&s2, false), 1);
 
     let mut s3 = vec![0x4e, 0x01, 0x00, 0x00, 0x00, 0xac];
-    s3.push(0xae); // CHECKMULTISIG → 20
+    s3.push(0xae); // inaccurate mode counts this CHECKMULTISIG as 20 sigops
     assert_eq!(script_sigop_count(&s3, false), 20);
 
-    // last_script_push with PUSHDATA*
+    // The last push is encoded with OP_PUSHDATA1.
     let lp = vec![0x4c, 0x01, 0xab];
     assert_eq!(last_script_push(&lp), Some(&[0xabu8][..]));
     let lp2 = vec![0x4d, 0x01, 0x00, 0xcd];
@@ -422,7 +422,7 @@ fn witness_p2wsh_and_nested_p2sh() {
     }];
     assert_eq!(witness_sigop_count(&tx, &spks(&prevouts)), 1);
 
-    // Nested P2SH-P2WPKH: redeem in scriptSig.
+    // For nested P2SH-P2WPKH the redeem script is carried in the scriptSig.
     let mut redeem = vec![0x00, 0x14];
     redeem.extend([0u8; 20]);
     let mut ss = vec![redeem.len() as u8];
@@ -453,10 +453,10 @@ fn witness_p2wsh_and_nested_p2sh() {
     }];
     assert_eq!(witness_sigop_count(&tx2, &spks(&prevouts2)), 1);
 
-    // p2sh_sigop prevouts short / non-p2sh skip
+    // An empty prevout list contributes no P2SH sigops, and a non-P2SH script is skipped.
     assert_eq!(p2sh_sigop_count(&tx2, &[]), 0);
     assert_eq!(p2sh_sigop_count(&tx2, &[(&[0x51u8][..])]), 0);
-    // witness_sigop missing prevout
+    // A missing prevout contributes no witness sigops.
     assert_eq!(witness_sigop_count(&tx, &[]), 0);
 }
 
@@ -466,7 +466,7 @@ fn verify_one_script_job_skips_anyone_can_spend() {
     let job = ScriptCheckJob::new(
         vec![TxOut {
             value: Amount::from_sat(1),
-            script_pubkey: ScriptBuf::from_bytes(vec![0x51]), // OP_TRUE ACS
+            script_pubkey: ScriptBuf::from_bytes(vec![0x51]), // 0x51 is OP_TRUE, which is anyone-can-spend
         }],
         Transaction {
             version: TxVersion::TWO,
@@ -534,9 +534,9 @@ fn job_tx_traits_and_shared_mut_panic() {
     assert_eq!(Borrow::<Transaction>::borrow(&owned).output.len(), 1);
     let mut owned_mut = JobTx::owned(tx.clone());
     assert_eq!(owned_mut.output.len(), 1);
-    owned_mut.output[0].value = Amount::from_sat(2); // DerefMut owned
+    owned_mut.output[0].value = Amount::from_sat(2); // this assignment goes through DerefMut on the owned wrapper
 
-    // Minimal block shell for shared JobTx.
+    // This is a minimal block shell around the shared JobTx.
     let header = Header {
         version: Version::from_consensus(4),
         prev_blockhash: BlockHash::from_byte_array([0; 32]),

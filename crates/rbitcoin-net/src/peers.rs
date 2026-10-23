@@ -32,7 +32,7 @@ pub fn outbound_msg_bytes(msg: &NetworkMessage) -> usize {
         NetworkMessage::Tx(tx) => tx.total_size(),
         NetworkMessage::Block(b) => b.total_size(),
         NetworkMessage::BlockTxn(bt) => {
-            // BlockTransactions: hash, compact count, then each transaction.
+            // A blocktxn is a 32-byte hash, a compact-size count, then each transaction.
             let txs = &bt.transactions.transactions;
             32 + bitcoin::consensus::encode::VarInt(txs.len() as u64).size()
                 + txs.iter().map(|tx| tx.total_size()).sum::<usize>()

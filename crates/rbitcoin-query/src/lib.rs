@@ -2669,7 +2669,7 @@ impl Query {
         if let Some(&v) = memo.get(&root.0) {
             return Ok(v);
         }
-        // false = first visit (push children), true = children done (fold).
+        // False means the first visit and pushes children. True means the children are done and the node folds.
         let mut on_stack: U64Set = U64Set::default();
         let mut stack: Vec<(Fk, bool)> = Vec::with_capacity(256);
         stack.push((root, false));
@@ -2705,7 +2705,7 @@ impl Query {
             if let Some(kids) = index.children.get(&fk.0) {
                 for &(ck, _) in kids {
                     let Some(&(w, d)) = memo.get(&ck.0) else {
-                        // Cycle / incomplete child — treat as zero (corrupt graph).
+                        // A cycle or an incomplete child counts as zero because the graph is corrupt.
                         continue;
                     };
                     if w > best_child_w || (w == best_child_w && d > best_depth) {

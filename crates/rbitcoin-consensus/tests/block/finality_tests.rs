@@ -36,7 +36,7 @@ fn sequence_final_ignores_locktime() {
 fn time_locktime_uses_cutoff() {
     let t = LOCKTIME_THRESHOLD + 1000;
     let tx = bare_tx(1, LockTime::from_time(t).unwrap(), Sequence::ZERO);
-    assert!(!is_final_tx(&tx, 1, t)); // need lt < cutoff
+    assert!(!is_final_tx(&tx, 1, t)); // the locktime must be strictly below the cutoff
     assert!(is_final_tx(&tx, 1, t + 1));
 }
 
@@ -69,16 +69,15 @@ fn bip68_enforced_when_version_high_bit_set() {
 
 #[test]
 fn bip68_disable_flag_and_time_type() {
-    // DISABLE bit → ignore relative lock.
+    // The disable bit makes the relative lock ignored.
     let disable = 1u32 << 31;
     let tx = bare_tx(2, LockTime::ZERO, Sequence::from_consensus(disable | 10));
     assert!(sequence_locks_satisfied(&tx, &[100], &[0], 50, 0));
 
-    // Time-based: TYPE_FLAG | n, granularity 512s.
+    // The type flag marks a time lock. The unit is 512 seconds.
     let type_flag = 1u32 << 22;
-    let n = 2u32; // 2 × 512s relative
+    let n = 2u32;
     let tx = bare_tx(2, LockTime::ZERO, Sequence::from_consensus(type_flag | n));
-    // coin MTP = 1000; minTime ≈ 1000 + (2<<9) - 1
     let coin_mtp = 1000u32;
     let min_time = coin_mtp as i64 + ((n as i64) << 9) - 1;
     assert!(!sequence_locks_satisfied(
@@ -104,12 +103,11 @@ fn bip68_unresolved_coin_age_fails_closed() {
     let type_flag = 1u32 << 22;
     let tx_h = bare_tx(2, LockTime::ZERO, Sequence::from_consensus(10));
     let tx_t = bare_tx(2, LockTime::ZERO, Sequence::from_consensus(type_flag | 2));
-    // Missing height entry.
     assert!(!sequence_locks_satisfied(&tx_h, &[], &[0], 110, 1_000_000));
     // Height 0 is the genesis coin (relative height 10 spends from block 10).
     assert!(sequence_locks_satisfied(&tx_h, &[0], &[0], 10, 1_000_000));
     assert!(!sequence_locks_satisfied(&tx_h, &[0], &[0], 9, 1_000_000));
-    // Time-type with MTP 0 / missing.
+    // Median time 0 is unresolved, the same as a missing median, so a time lock fails.
     assert!(!sequence_locks_satisfied(
         &tx_t,
         &[100],
@@ -124,7 +122,6 @@ fn bip68_unresolved_coin_age_fails_closed() {
         200,
         1_000_000
     ));
-    // Control: known ages still work.
     assert!(sequence_locks_satisfied(&tx_h, &[100], &[0], 110, 0));
 }
 
@@ -163,7 +160,7 @@ fn locktime_at_threshold_is_a_timestamp() {
 fn bip68_height_type_ignores_zero_mtp() {
     let tx = bare_tx(2, LockTime::ZERO, Sequence::from_consensus(10));
     assert!(sequence_locks_satisfied(&tx, &[100], &[0], 110, 0));
-    // bogus MTP must not affect height-type check
+    // A nonsense median time must not change the result of a height-based relative lock.
     assert!(sequence_locks_satisfied(&tx, &[100], &[u32::MAX], 110, 0));
     assert!(!sequence_locks_satisfied(&tx, &[100], &[0], 109, 0));
 }

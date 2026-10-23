@@ -70,7 +70,7 @@ fn a_torn_journal_keeps_the_records_before_the_tear() {
     assert_eq!(loaded.journal.len(), 2);
     assert!(loaded.journal_note.unwrap().contains("torn after 2"));
 
-    // a flipped byte inside a record ends the replay there
+    // A flipped byte inside a record ends the replay at that record.
     let path = d.join(JOURNAL_FILE);
     let mut raw = std::fs::read(&path).unwrap();
     raw[JOURNAL_HEADER + JOURNAL_RECORD + 9] ^= 1;

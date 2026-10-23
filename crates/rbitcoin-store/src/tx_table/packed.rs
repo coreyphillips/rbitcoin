@@ -1102,7 +1102,7 @@ pub fn decode_packed_tx_need_outs_with_spender_rels_secret(
         return Err(StoreError::Corrupt("invariant: create n_out"));
     }
     meta.output_count = n_out;
-    // Empty need → all vouts (full materialize path without a second full decode).
+    // An empty vout list means every output, so this walk does not decode the transaction a second time.
     let take_all = need_vouts.is_empty();
     let mut need_i = 0usize;
     let mut live = Vec::with_capacity(if take_all {

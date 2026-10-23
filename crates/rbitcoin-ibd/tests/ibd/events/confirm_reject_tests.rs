@@ -776,7 +776,6 @@ fn multi_hop_bad_prev_densifies_full_path_and_reorgs() {
         b
     };
 
-    // Loser path: gen → L1 → L2 (tip).
     let l1 = mine(gen, 1_400_000_100, 1);
     hub.accept_block(l1.clone()).unwrap();
     let l2 = mine(l1.block_hash(), 1_400_000_200, 2);
@@ -784,7 +783,6 @@ fn multi_hop_bad_prev_densifies_full_path_and_reorgs() {
     assert_eq!(hub.tip_height(), Some(2));
     assert_eq!(hub.tip_hash().unwrap(), l2.block_hash());
 
-    // Heavier path: gen → W1 → W2 → W3 (headers; bodies staged).
     let w1 = distinct(mine(gen, 1_400_000_101, 1), l1.block_hash());
     hub.ensure_header(&w1.header).unwrap();
     let w2 = mine(w1.block_hash(), 1_400_000_201, 2);
@@ -925,7 +923,7 @@ fn apply_peer_event_body_and_control_surface() {
     st.inflight.insert(class_a_hash, InflightReq::new(1));
     // Minimal framed payload (header prefix + empty body is enough for offer).
     let mut payload = vec![0u8; 81];
-    payload[0..4].copy_from_slice(&1u32.to_le_bytes()); // version-ish
+    payload[0..4].copy_from_slice(&1u32.to_le_bytes()); // Header version field.
     apply_peer_event(
         &mut st,
         &hub,
@@ -950,7 +948,7 @@ fn apply_peer_event_body_and_control_surface() {
         "Class A known must still enter body queue (claim intake)"
     );
 
-    // Decode fail → missing so re-getdata allowed.
+    // A decode failure is marked missing so getdata can be sent again.
     st.body.mark_pending(h(9));
     apply_peer_event(
         &mut st,
@@ -1059,7 +1057,6 @@ fn apply_peer_event_body_and_control_surface() {
         "notfound hash is below the densify cursor"
     );
 
-    // Addrs + inject filter.
     inject_learned_addrs(&mut book, &[], local, 1);
     let routable = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4)), 8333);
     inject_learned_addrs(
@@ -1123,7 +1120,6 @@ fn apply_peer_event_body_and_control_surface() {
         "dead peer's hash is below the densify cursor"
     );
 
-    // Drain empty channels.
     let (body_tx, mut body_rx) = mpsc::unbounded_channel();
     let (ctrl_tx, mut ctrl_rx) = mpsc::unbounded_channel();
     let stats = rbitcoin_ibd::ibd::status::LoopStats::default();
@@ -1507,7 +1503,7 @@ fn mine(
 /// rejects arrive in each class, bad-prev forks rewind to the fork point and
 /// replant the heavier path, and a heavier fork carries an invalid block in
 /// the middle.
-#[allow(clippy::cognitive_complexity)] // one chain, many fork and reject arms
+#[allow(clippy::cognitive_complexity)] // One chain covers many fork and reject cases, so this test stays in one function.
 #[test]
 fn ibd_bad_prev_fork() {
     use super::super::assign::dummy_slot;
@@ -1873,7 +1869,7 @@ fn ibd_bad_prev_fork() {
     assert!(planted(&st, t, &win, &ext) && st.reorg.need_getdata().is_empty());
     settle(&win, &ext);
 
-    // W held as a side body, E queued at tip+1.
+    // W is held as a side body and E is queued at tip plus one.
     let (tip, t, lose, win, ext) = fork();
     offer(t + 2, &ext);
     let mut st = IbdWorkState::new(Vec::new(), Some(lose.block_hash()), Some(t + 1));

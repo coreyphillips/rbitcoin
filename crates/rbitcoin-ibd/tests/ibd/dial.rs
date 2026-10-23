@@ -210,7 +210,7 @@ fn dial_blocked_and_cooldown_expiry() {
     let s = dummy_slot(1, addr(1), true);
     let mut cooldown = HashMap::new();
     cooldown.insert(addr(2), now + Duration::from_secs(60));
-    cooldown.insert(addr(3), now - Duration::from_secs(1)); // expired
+    cooldown.insert(addr(3), now - Duration::from_secs(1));
     let blocked = dial_blocked_addrs(&[s], &cooldown, now);
     assert!(blocked.contains(&rbitcoin_net::NetAddr::Ip(addr(1))));
     assert!(blocked.contains(&rbitcoin_net::NetAddr::Ip(addr(2))));
@@ -295,7 +295,6 @@ fn samp(id: usize, bps: u64, inflight: bool) -> RelativeSlowSample {
 
 #[test]
 fn relative_slow_pick_respects_cluster_and_outlier() {
-    // Thin samples
     assert_eq!(relative_slow_pick(&[samp(0, 1_000_000, true)], 8), None);
     // Tight pack — slowest is still in-cluster
     let tight = [
@@ -336,7 +335,7 @@ fn relative_slow_pick_respects_cluster_and_outlier() {
     ];
     assert_eq!(relative_slow_pick(&half, 8), None);
 
-    // Clear quarter-median outlier
+    // Peer 3 is below a quarter of the median, so it is the outlier.
     let outlier = [
         samp(0, 2_000_000, true),
         samp(1, 1_900_000, true),
@@ -375,7 +374,7 @@ fn relative_slow_pick_respects_cluster_and_outlier() {
     ];
     assert_eq!(relative_slow_pick(&no_work, 8), None);
 
-    // Two outliers → worst (lowest bps)
+    // When two peers are outliers, the lowest bytes per second is chosen.
     let two = [
         samp(0, 2_000_000, true),
         samp(1, 1_900_000, true),
@@ -437,8 +436,8 @@ fn relative_slow_hysteresis_is_wall_clock() {
 #[test]
 fn relative_slow_min_samples_scales() {
     assert_eq!(relative_slow_min_samples(16), 8);
-    assert_eq!(relative_slow_min_samples(10), 6); // max(6, 5)=6
-    assert_eq!(relative_slow_min_samples(4), 4); // min(alive)
+    assert_eq!(relative_slow_min_samples(10), 6);
+    assert_eq!(relative_slow_min_samples(4), 4); // The floor is the number of live peers when that is below six.
     assert_eq!(relative_slow_min_samples(8), 6);
 }
 
@@ -1100,7 +1099,7 @@ fn relative_slow_pure_edges_and_mature_sample_filters() {
     ];
     assert_eq!(relative_slow_pick(&zero_and_fast, 8), Some(0));
 
-    // Equal worst bps → lower peer_id wins.
+    // When the worst bytes per second tie, the lower peer id wins.
     let tie = [
         samp(5, 400_000, true),
         samp(2, 400_000, true),

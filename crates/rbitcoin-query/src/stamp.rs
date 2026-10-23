@@ -37,7 +37,7 @@ pub struct BatchParentIds {
 }
 
 impl BatchParentIds {
-    #[allow(clippy::type_complexity)] // packed (fk, range) / span row is the on-disk shape
+    #[allow(clippy::type_complexity)] // The packed (fk, range) or span row is the on-disk shape.
     pub fn get(
         &self,
         txid: &[u8; 32],

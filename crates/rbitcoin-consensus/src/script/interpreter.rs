@@ -238,7 +238,7 @@ impl<'a> EvalContext<'a> {
         )
     }
 
-    #[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+    #[allow(clippy::too_many_arguments)] // each argument stays separate so a call site can pass one fact
     #[cfg(debug_assertions)]
     pub fn new_with_flags(
         tx: &'a Transaction,
@@ -263,7 +263,7 @@ impl<'a> EvalContext<'a> {
         )
     }
 
-    #[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+    #[allow(clippy::too_many_arguments)] // each argument stays separate so a call site can pass one fact
     #[doc(hidden)]
     pub fn from_eval_parts(
         tx: &'a Transaction,
@@ -881,7 +881,7 @@ pub fn eval_script(
                         op_checkmultisig(stack, altstack.len(), ctx, true, &mut op_count, pre)?;
                     }
                     0xb1 => {
-                        // BIP65: pre-activation is NOP.
+                        // Before BIP65 is active, CLTV is a no-op.
                         if !ctx.bip65_active {
                             continue;
                         }
@@ -916,7 +916,8 @@ pub fn eval_script(
                             return Err(ConsensusError::Script("CSV negative".into()));
                         }
                         if csv as u32 & (1 << 31) != 0 {
-                            // disabled bit → NOP (before version gate)
+                            // The sequence disable bit is a no-op, and that
+                            // check runs before the version gate.
                             continue;
                         }
                         // Core CheckSequence: tx.nVersion < 2 → fail (unsigned; RB-001).
@@ -958,7 +959,7 @@ pub fn csv_locktime_mask(type_bit: u32) -> u32 {
 pub fn sequence_csv_ok(seq: Sequence, csv: u32) -> bool {
     let seq_n = seq.to_consensus_u32();
     if seq_n & (1 << 31) != 0 {
-        return false; // SEQUENCE_LOCKTIME_DISABLE_FLAG on input
+        return false; // bit 31 is SEQUENCE_LOCKTIME_DISABLE_FLAG on the input
     }
     let type_bit = 1 << 22;
     let mask = csv_locktime_mask(type_bit);

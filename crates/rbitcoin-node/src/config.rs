@@ -1058,7 +1058,8 @@ impl NodeConfig {
             let (key, val) = match line.split_once('=') {
                 Some((k, v)) => (k.trim(), v.trim()),
                 None => {
-                    // Boolean flags: `no_seeds=1` preferred; bare `regtest`.
+                    // A line with no `=` is a bare network name. Other booleans
+                    // are written as `name=1`.
                     if line.eq_ignore_ascii_case("regtest") {
                         self.network = Network::Regtest;
                         continue;

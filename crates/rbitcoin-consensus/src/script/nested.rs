@@ -165,7 +165,7 @@ pub fn check_p2sh_redeem_hash(spk: &[u8], redeem: &[u8]) -> Result<(), Consensus
 /// Minimal `CScript() << data` encoding for data lengths 0..=75 (witness-program redeems).
 #[doc(hidden)]
 pub fn minimal_push_encoding(data: &[u8]) -> Vec<u8> {
-    // Witness-program scripts are 4..=42 bytes → always direct OP_PUSHBYTES_n.
+    // A witness program is 4 to 42 bytes, so the push is always a direct OP_PUSHBYTES_n.
     debug_assert!(data.len() <= 75);
     let mut v = Vec::with_capacity(1 + data.len());
     v.push(data.len() as u8);

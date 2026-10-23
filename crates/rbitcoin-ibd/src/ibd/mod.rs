@@ -434,7 +434,7 @@ async fn sleep_unless_cancelled(delay: Duration, cancelled: impl Fn() -> bool) -
     true
 }
 
-#[allow(clippy::cognitive_complexity)] // IBD coordination: dial, confirm, headers, stall
+#[allow(clippy::cognitive_complexity)] // This function coordinates dialing, confirm, headers, and stall handling.
 pub async fn ibd_cancellable(
     hub: Arc<ChainHub>,
     magic: Magic,

@@ -81,7 +81,6 @@ fn block_queue_via_query_enqueue_reopen_empty() {
         q.block_queue_payload(42).unwrap().as_deref(),
         Some(payload.as_slice())
     );
-    // Confirm-write hook: dequeue by height.
     assert_eq!(q.block_queue_dequeue_height(42).unwrap(), 1);
     assert_eq!(q.block_queue_stats().1, 0);
     // Restart: RAM queue is empty (by design — redownload, no double disk write).
@@ -132,7 +131,7 @@ fn block_queue_payload_peek_ram() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
-#[allow(clippy::cognitive_complexity)] // one fixture, many window/byte cases
+#[allow(clippy::cognitive_complexity)] // One fixture covers many window and byte cases, so this test stays in one function.
 #[test]
 fn block_queue_soft_free_bytes_and_confirm_window() {
     use rbitcoin_query::soft_densify::BQ_SOFT_CONFIRM_SECS;
@@ -140,7 +139,7 @@ fn block_queue_soft_free_bytes_and_confirm_window() {
         soft_assign_restricted, soft_confirm_window_covered, soft_confirm_window_n,
         soft_densify_band_hi, BQ_SOFT_FREE_BYTES,
     };
-    // 5 blk/s × 60s → window 300.
+    // Five blocks per second for 60 seconds is a window of 300.
     assert_eq!(soft_confirm_window_n(Some(5.0)), 300);
     assert_eq!(soft_confirm_window_n(None), 0);
     assert_eq!(
@@ -150,13 +149,13 @@ fn block_queue_soft_free_bytes_and_confirm_window() {
 
     let free = BQ_SOFT_FREE_BYTES;
     let over = free + 1;
-    // Under free: full densify_hi regardless of rate.
+    // Under the free floor, the band is the full densify high regardless of rate.
     assert_eq!(
         soft_densify_band_hi(100, 1000, free, Some(0.1), u64::MAX, None),
         1000
     );
     assert!(!soft_assign_restricted(free));
-    // densify_hi < path_lo edge (empty band).
+    // When densify high is below the path start, the band is empty.
     assert_eq!(
         soft_densify_band_hi(50, 40, free, Some(1.0), u64::MAX, None),
         40
@@ -165,7 +164,7 @@ fn block_queue_soft_free_bytes_and_confirm_window() {
         soft_densify_band_hi(50, 40, over, Some(1.0), u64::MAX, None),
         40
     );
-    // Over free: confirm window only.
+    // Over the free floor, the band is only the confirm window.
     assert_eq!(
         soft_densify_band_hi(100, 1000, over, Some(0.1), u64::MAX, None),
         105,
@@ -176,17 +175,16 @@ fn block_queue_soft_free_bytes_and_confirm_window() {
         100,
         "rate cold → tip-adjacent only"
     );
-    // Window clamp to densify_hi when rate is high.
     assert_eq!(
         soft_densify_band_hi(100, 110, over, Some(5.0), u64::MAX, None),
         110,
         "window 300 clamped to densify_hi=110"
     );
     assert!(soft_assign_restricted(over));
-    assert!(!soft_confirm_window_covered(50, over, Some(5.0))); // 50 < 300
+    assert!(!soft_confirm_window_covered(50, over, Some(5.0))); // 50 blocks is under the 300-block window.
     assert!(soft_confirm_window_covered(300, over, Some(5.0)));
-    assert!(soft_confirm_window_covered(1, over, None)); // cold + over free
-    assert!(!soft_confirm_window_covered(1, free, None)); // under free never covered
+    assert!(soft_confirm_window_covered(1, over, None)); // A cold rate over the free floor counts as covered.
+    assert!(!soft_confirm_window_covered(1, free, None)); // Under the free floor a cold rate is not covered.
 
     let (dir, q) = temp_query();
     assert!(!q.block_queue_update_soft_pressure(Some(5.0)));

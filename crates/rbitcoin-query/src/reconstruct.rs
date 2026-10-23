@@ -346,7 +346,7 @@ impl Query {
         Ok(())
     }
 
-    #[allow(clippy::type_complexity)] // packed (fk, range) / span row is the on-disk shape
+    #[allow(clippy::type_complexity)] // The packed (fk, range) or span row is the on-disk shape.
     #[doc(hidden)]
     pub fn load_class_a_rows(
         &self,

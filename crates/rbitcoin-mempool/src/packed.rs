@@ -62,7 +62,7 @@ pub struct PackedLive {
     pub vins: Vec<VinAux>,
 }
 
-#[allow(clippy::too_many_arguments)] // one field per record column
+#[allow(clippy::too_many_arguments)] // each argument is one column of the packed record
 pub fn encode_packed_live(
     tx: &Transaction,
     txid: &Txid,

@@ -415,16 +415,15 @@ fn bip143_sighash_arms_single_acp_and_p2wsh() {
     let sc = Script::from_bytes(&[0x51]);
     let amt = Amount::from_sat(50_000);
 
-    // Bad index.
     let pre = rbitcoin_consensus::TxPrecompute::from_tx(&tx);
     assert!(crypto::bip143_signature_hash(&tx, 9, sc, amt, 0x01, &pre).is_err());
 
-    // All / Single / None + AnyoneCanPay variants.
+    // These hashtypes are ALL, NONE, and SINGLE, each alone and with ANYONECANPAY.
     for ty in [0x01u32, 0x02, 0x03, 0x81, 0x82, 0x83] {
         let h = crypto::bip143_signature_hash(&tx, 0, sc, amt, ty, &pre).expect("sighash");
         assert_ne!(h, [0u8; 32]);
     }
-    // Single at index with matching output (input 1 → output 1).
+    // SIGHASH_SINGLE at input 1 commits to output 1, which this transaction has.
     let h_single = crypto::bip143_signature_hash(&tx, 1, sc, amt, 0x03, &pre).unwrap();
     // Single with no matching output (only 2 outs; index 1 ok; use 1-input for zero outputs arm).
     let tx1 = Transaction {

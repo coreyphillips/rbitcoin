@@ -48,7 +48,7 @@ fn seed_genesis(q: &Query) -> [u8; 32] {
 
 #[test]
 fn fee_routes_keep_the_estimator_resolution() {
-    // BTC/kvB as the estimator publishes it: whole sat/kvB
+    // The estimator publishes a whole sat/kvB rate as BTC/kvB.
     let pairs = [
         (1, 0.000_012_34),
         (3, 0.000_009_87),

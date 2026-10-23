@@ -115,7 +115,7 @@ fn pure_write_idempotent_skip() {
         rbitcoin_store::io_backend::WriteIoBackend::Pwrite,
     )
     .unwrap();
-    // Second time with known field==sfk → skip
+    // The second call already knows the spender field, so that annotate is skipped.
     put_spend_batch_by_abs_meta_known(
         &t,
         &spenders,

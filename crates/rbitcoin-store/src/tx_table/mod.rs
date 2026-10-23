@@ -2562,7 +2562,7 @@ impl TxTable {
         )
     }
 
-    #[allow(clippy::too_many_arguments)] // same wave as append_stems_one_wave
+    #[allow(clippy::too_many_arguments)] // This takes the same arguments as the stem-append wave.
     /// Class A append from pins. `input_edges[i]` is `(parent_fk, vout)` per vin.
     /// A null parent is coinbase (`vout` ignored). `encode_in` writes that row's
     /// `seqsigwit` bytes, XOR included when a secret applies.
@@ -2589,7 +2589,7 @@ impl TxTable {
         )
     }
 
-    #[allow(clippy::too_many_arguments)] // same wave as append_stems_one_wave
+    #[allow(clippy::too_many_arguments)] // This takes the same arguments as the stem-append wave.
     #[doc(hidden)]
     pub fn put_pins_with_edges<P: PackedCreate>(
         &self,
@@ -2674,7 +2674,7 @@ impl TxTable {
         Ok((fks, loc))
     }
 
-    #[allow(clippy::too_many_arguments)] // IO/session args stay unbundled
+    #[allow(clippy::too_many_arguments)] // The IO and session arguments stay unbundled.
     /// Encode and write `txout` + `seqsigwit` + `spent` bodies as one pwrite wave.
     ///
     /// Order is still body → loc → HWM per stem. Not the spend-annotate machine.
@@ -2777,7 +2777,6 @@ impl TxTable {
     pub fn fks_by_txid(&self, txid: &[u8; 32]) -> Result<Vec<Fk>, StoreError> {
         let mut out: Vec<Fk> = Vec::new();
         let mixed = self.secret.mix_txid(txid);
-        // probe_candidates already open-first then sealed newest→oldest, deep-first within.
         let cands = self.head.probe_candidates(&mixed)?;
         for fk in cands {
             if out.contains(&fk) || self.body_txid(fk)? != *txid {

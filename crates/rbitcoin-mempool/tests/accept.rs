@@ -73,7 +73,7 @@ fn reject_non_final_locktime_height() {
     let dir = tmp_dir();
     let (op, _, utxos) = chain_utxo(100_000);
     let mut tx = spend_tx(op, 99_000);
-    // Height lock: need block_height > 500; tip.height+1 = 101 → not final.
+    // The lock is height 500. The next block is tip 100 plus one, so 101, and the lock is not final.
     tx.lock_time = LockTime::from_height(500).unwrap();
     // Non-final sequence so locktime is enforced.
     tx.input[0].sequence = Sequence::from_consensus(0xfffffffe);
@@ -84,7 +84,7 @@ fn reject_non_final_locktime_height() {
     let mut mp = ActiveMempool::open_or_create(&dir).unwrap();
     let err = mp.accept_tx(&tx, &utxos, tip).unwrap_err();
     assert!(matches!(err, AcceptError::NotFinal), "got {err}");
-    // At tip 500, next height 501 > 500 → final.
+    // At tip 500 the next height is 501, which is past the lock, so the transaction is final.
     let tip2 = ChainTipCtx {
         height: 500,
         mtp: u32::MAX,
@@ -117,7 +117,7 @@ fn reject_immature_coinbase() {
     );
     let utxos = MapUtxoProvider { map };
     let tx = spend_tx(op, 49_0000_0000);
-    // tip 100 → next 101; need create+100 = 150.
+    // The tip is 100, so the next height is 101. A coinbase is mature only at create height plus 100, here 150.
     let tip = ChainTipCtx {
         height: 100,
         mtp: u32::MAX,
@@ -479,7 +479,7 @@ fn reject_invalid_p2wpkh_script() {
     let mut map = HashMap::new();
     map.insert(op, coin(txout));
     let utxos = MapUtxoProvider { map };
-    let tx = spend_tx(op, 99_000); // empty scriptSig + empty witness
+    let tx = spend_tx(op, 99_000); // the spend has an empty scriptSig and an empty witness
     let mut mp = ActiveMempool::open_or_create(&dir).unwrap();
     let err = mp.accept_tx(&tx, &utxos, TIP_OK).unwrap_err();
     assert!(
@@ -659,7 +659,8 @@ fn schema2_pool_recomputes_sigops_after_open() {
         for tx in [&p2sh, &p2wsh, &child, &gone] {
             mp.accept_tx(tx, &utxos, TIP_OK).unwrap();
         }
-        // Admitted by a pre-sigop-check build.
+        // This body was stored by a build from before the sigop check, so
+        // the test appends it directly.
         let (pid, pw) = (probe.compute_txid(), probe.compute_wtxid());
         mp.store
             .append_live_tx(
@@ -752,7 +753,7 @@ fn evaluate_after_script_enforces_cluster_limits() {
     let preview = |count: u32, child: &Transaction| {
         let dir = tmp_dir();
         let mut mp = ActiveMempool::open_or_create(&dir).unwrap();
-        mp.set_cluster_limits(Some(count), Some(1)); // 1 kvB = 4_000 WU
+        mp.set_cluster_limits(Some(count), Some(1)); // one kilobyte of cluster limit is 4_000 weight units
         mp.accept_tx(&parent, &utxos, TIP_OK).unwrap();
         let prep = mp
             .prepare_admit(
@@ -971,7 +972,7 @@ fn compact_preserves_cluster_size_overlay() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-#[allow(clippy::cognitive_complexity)] // one fixture, many reject arms
+#[allow(clippy::cognitive_complexity)] // this allow covers one fixture exercising many reject arms
 #[test]
 fn accept_error_display_and_reject_paths() {
     use std::error::Error;
@@ -1007,7 +1008,6 @@ fn accept_error_display_and_reject_paths() {
         assert!(!e.to_string().is_empty());
         let _ = e as &dyn Error;
     }
-    // From MempoolError.
     let from_io: AcceptError = MempoolError::BadMagic.into();
     assert!(from_io.to_string().contains("durable"));
     let from_full: AcceptError = MempoolError::Full.into();
@@ -1017,7 +1017,6 @@ fn accept_error_display_and_reject_paths() {
     let (op, _, utxos) = chain_utxo(100_000);
     let mut mp = ActiveMempool::open_or_create(&dir).unwrap();
 
-    // Coinbase reject.
     let cb = Transaction {
         version: Version::TWO,
         lock_time: LockTime::ZERO,
@@ -1037,12 +1036,10 @@ fn accept_error_display_and_reject_paths() {
         Err(AcceptError::Coinbase)
     ));
 
-    // Package empty / too large.
     assert!(matches!(
         mp.accept_package(&[], &utxos, TIP_OK),
         Err(AcceptError::PackageEmpty)
     ));
-    // Count over MAX_PACKAGE_COUNT (25).
     let many: Vec<Transaction> = (0..MAX_PACKAGE_COUNT + 1)
         .map(|i| {
             spend_tx(
@@ -1065,13 +1062,11 @@ fn accept_error_display_and_reject_paths() {
 
     let tx = spend_tx(op, 99_000);
     mp.accept_tx(&tx, &utxos, TIP_OK).unwrap();
-    // Duplicate.
     assert!(matches!(
         mp.accept_tx(&tx, &utxos, TIP_OK),
         Err(AcceptError::Duplicate(_))
     ));
 
-    // Missing prevout → parked in orphanage (soft accept).
     let (_op2, _, empty) = chain_utxo(50_000);
     let missing = spend_tx(
         OutPoint {
@@ -1088,10 +1083,8 @@ fn accept_error_display_and_reject_paths() {
     assert!(mp.orphanage.contains(&missing_id));
     assert_eq!(mp.orphan_count(), 1);
 
-    // maybe_compact with only live → None.
     assert!(mp.maybe_compact().unwrap().is_none());
 
-    // Package coinbase / not topo / oversized count.
     assert!(matches!(
         mp.accept_package(&[cb], &utxos, TIP_OK),
         Err(AcceptError::Coinbase)
@@ -1104,34 +1097,29 @@ fn accept_error_display_and_reject_paths() {
         },
         97_000,
     );
-    // Child before parent → not topo.
     assert!(matches!(
         mp.accept_package(&[b.clone(), a.clone()], &utxos, TIP_OK),
         Err(AcceptError::PackageNotTopo)
     ));
-    // Duplicate in package.
     assert!(matches!(
         mp.accept_package(&[a.clone(), a.clone()], &utxos, TIP_OK),
         Err(AcceptError::Duplicate(_))
     ));
 
-    // remove unknown.
     assert!(matches!(
         mp.remove_txid(&Txid::from_byte_array([0xee; 32])),
         Err(AcceptError::NotFound(_))
     ));
 
-    // Negative fee.
+    // The output is larger than its input, so the fee is negative.
     let fat = spend_tx(op, 200_000);
     assert!(matches!(
         mp.accept_tx(&fat, &utxos, TIP_OK),
         Err(AcceptError::Policy(_))
     ));
 
-    // rbf_pays_for_replacement pure unit.
     assert!(!rbf_pays_for_replacement(100, 400, 100, 400));
     assert!(!rbf_pays_for_replacement(100, 400, 200, 400));
-    // Higher fee and rate with incremental cover.
     assert!(rbf_pays_for_replacement(50_000, 400, 1_000, 400));
 
     let _ = std::fs::remove_dir_all(&dir);
@@ -1327,7 +1315,6 @@ fn accept_grows_legacy_tiny_slot_table() {
     // Large weight budget so eviction is not the free-slot path.
     let mut mp = ActiveMempool::open_or_create_with_limit(&dir, 300_000_000).unwrap();
     assert_eq!(mp.store.meta().slot_cap, 4);
-    // Four independent chain utxos → four live slots.
     for i in 0..4u8 {
         let op = OutPoint {
             txid: Txid::from_byte_array({

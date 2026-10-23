@@ -26,42 +26,35 @@ fn load_json() -> Value {
 
 #[test]
 fn assemble_edges_string_hex_push_and_errors() {
-    // Quoted string → data push.
     let b = assemble("'Az'").expect("string");
-    assert_eq!(b[0], 2); // push length
+    assert_eq!(b[0], 2); // the first byte is the length of the pushed string
     assert_eq!(&b[1..], b"Az");
     // Hex raw bytes (not a push wrapper).
     let b = assemble("0x5152").expect("hex");
     assert_eq!(b, vec![0x51, 0x52]);
-    // Numbers and opcode names.
     let b = assemble("1 2 ADD").expect("ops");
     assert!(!b.is_empty());
-    // Push length encodings for larger payloads.
     let long = "x".repeat(80);
     let quoted = format!("'{long}'");
     let b = assemble(&quoted).expect("long push");
-    assert_eq!(b[0], 0x4c); // OP_PUSHDATA1
+    assert_eq!(b[0], 0x4c); // 0x4c is OP_PUSHDATA1
     assert_eq!(b[1], 80);
-    // Errors.
     assert!(assemble("'unterminated").is_err());
-    assert!(assemble("0xabc").is_err()); // odd hex
+    assert!(assemble("0xabc").is_err()); // an odd number of hex digits is an error
     assert!(assemble("NOTANOPCODE").is_err());
-    // Empty / whitespace only.
     assert!(assemble("   ").unwrap().is_empty());
-    // 0X uppercase hex prefix.
     let b = assemble("0X5152").expect("hex upper");
     assert_eq!(b, vec![0x51, 0x52]);
-    // Negative scriptnum encoding.
+    // Negative one uses script-number encoding.
     let b = assemble("-1").expect("neg");
     assert!(!b.is_empty());
-    // Larger push → OP_PUSHDATA1 already covered; force OP_PUSHDATA2 via long payload.
+    // An 80-byte push already covered OP_PUSHDATA1. Three hundred bytes forces OP_PUSHDATA2.
     let long = "y".repeat(300);
     let b = assemble(&format!("'{long}'")).expect("pushdata2");
-    assert_eq!(b[0], 0x4d); // OP_PUSHDATA2
-                            // Opcode token mixed case / known names.
+    assert_eq!(b[0], 0x4d); // 0x4d is OP_PUSHDATA2
     let b = assemble("OP_DUP OP_HASH160").expect("ops named");
     assert!(!b.is_empty());
-    // Zero token → OP_0.
+    // The token 0 encodes as OP_0.
     let b = assemble("0").expect("zero");
     assert_eq!(b, vec![0x00]);
     // Small ints use opcode forms (MINIMALDATA-safe), not data pushes.
@@ -70,11 +63,9 @@ fn assemble_edges_string_hex_push_and_errors() {
     assert_eq!(assemble("-1").unwrap(), vec![0x4f]);
     // Larger ints use minimal CScriptNum push.
     let b = assemble("17").unwrap();
-    assert_eq!(b[0], 1); // direct push length
+    assert_eq!(b[0], 1); // the first byte is a direct push of one byte
     assert_eq!(&b[1..], &[17]);
 }
-
-// ── Flag mapping ────────────────────────────────────────────────────────────
 
 #[derive(Clone, Debug, Default)]
 struct CoreFlags {
@@ -131,7 +122,7 @@ fn parse_flags(s: &str) -> CoreFlags {
             "NULLDUMMY" => f.null_dummy = true,
             "MINIMALIF" => f.minimal_if = true,
             "SIGPUSHONLY" => f.sig_push_only = true,
-            "WITNESS_PUBKEYTYPE" => f.extra.push(p), // also read via apply → job.witness_pubkeytype
+            "WITNESS_PUBKEYTYPE" => f.extra.push(p), // apply later reads this name and sets the job witness pubkey type
             "DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM"
             | "DISCOURAGE_UPGRADABLE_TAPROOT_VERSION"
             | "DISCOURAGE_OP_SUCCESS"
@@ -389,7 +380,7 @@ fn eval_bare_pair(
     apply_eval_flags(&mut ctx, flags);
     let need = interpreter::eval_script(spk, &mut stack, &ctx).map_err(|e| format!("{e}"))?;
     if !need {
-        return Ok(()); // OP_SUCCESS-like
+        return Ok(()); // a false result is the tapscript OP_SUCCESS path, which counts as success
     }
 
     // BIP16 P2SH: if flag set and scriptPubKey is P2SH, restore stack and eval redeem.
@@ -432,9 +423,7 @@ fn eval_bare_pair(
     Ok(())
 }
 
-// ── Allowlist: explicit, machine-checked ────────────────────────────────────
-//
-// Format: (json_row_index, reason). Unknown failures must not be soft-passed.
+// Rows are `(json_row_index, reason)`. An unknown failure must not be soft-passed.
 
 /// Rows we intentionally do not require to match Core yet.
 /// Map our error / Ok to whether it matches Core's expected result code.
@@ -454,8 +443,6 @@ fn outcome_matches(expect: &str, got: &Result<(), String>) -> bool {
         _ => got.is_err(),
     }
 }
-
-// ── Row runner ──────────────────────────────────────────────────────────────
 
 struct RowStats {
     total: u32,

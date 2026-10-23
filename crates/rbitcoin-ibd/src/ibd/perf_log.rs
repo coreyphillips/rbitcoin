@@ -843,12 +843,12 @@ pub fn ns_ms(ns: u64) -> u64 {
     ns / 1_000_000
 }
 
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 pub fn sample(
     loop_stats: &LoopStats,
     inflight: usize,
     inflight_cap: usize,
-    // In-RAM block queue: (bytes, count, soft_stop_n).
+    // In-RAM block queue as bytes, entry count, and the soft stop.
     bq: (u64, usize, u32),
     buf_ahead: u32,
     hole: usize,

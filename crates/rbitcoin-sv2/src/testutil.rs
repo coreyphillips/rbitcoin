@@ -39,7 +39,7 @@ impl TpClient {
         };
         if let Some(n) = recv_buffer {
             socket.set_recv_buffer_size(n)?;
-            // Doubled for bookkeeping, and at least `tcp_rmem` min.
+            // The kernel doubles the size for bookkeeping and will not go below tcp_rmem min.
             let got = socket.recv_buffer_size()?;
             if got > 64 * 1024 {
                 return Err(io::Error::other(format!(

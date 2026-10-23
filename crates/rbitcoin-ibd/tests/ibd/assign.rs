@@ -686,7 +686,7 @@ fn tip_gap_frontier_and_holes(hub: &ChainHub) {
 /// restarts: when it is a fetch hole, who races it, which owner leaves the
 /// race, and that a peer is never asked for a hash twice. The same hub
 /// then decides the empty, gapped, byte-quarter, and ahead-count tip gaps.
-#[allow(clippy::cognitive_complexity)] // one hub, many tip-hole race arms
+#[allow(clippy::cognitive_complexity)] // One hub covers many tip-hole race cases, so this test stays in one function.
 #[test]
 fn ibd_cover_tip_holes() {
     use rbitcoin_ibd::ibd::peer_io::ibd_mono_ms;
@@ -888,7 +888,6 @@ fn ibd_cover_tip_holes() {
         "a silent retired owner is re-asked when no other peer exists"
     );
 
-    // Peer 1 connects and joins the hole.
     st.slots[1].alive = true;
     seed_ewma(&mut st.slots[1], 2_000_000);
     race(&mut st, &[0, 1], hole, TIP_HOLE_MAX_PEERS);
@@ -1183,7 +1182,7 @@ fn ibd_cover_tip_holes() {
 /// the hash — and the in-order tip behind it — freezes while densify sits
 /// at its hole-open zero cap. (Mainnet wedge: tip frozen with idle peers.)
 #[test]
-#[allow(clippy::cognitive_complexity)] // one hub, many retire/re-ask arms
+#[allow(clippy::cognitive_complexity)] // One hub covers many retire and re-ask cases, so this test stays in one function.
 fn ibd_cover_tip_holes_recovers_all_retired() {
     let (dir, hub) = tmp_hub();
     hub.ensure_genesis().unwrap();
@@ -1357,7 +1356,7 @@ fn ibd_cover_tip_holes_retired_cap_stays_one_racer() {
 /// Densify on one hub at genesis across IBD restarts: assign depth, the
 /// tip batch, band limits from the body queue, per-peer caps, hung
 /// owners, and reorg need.
-#[allow(clippy::cognitive_complexity)] // one hub, many densify arms
+#[allow(clippy::cognitive_complexity)] // One hub covers many densify cases, so this test stays in one function.
 #[test]
 fn assign_depth_densify_cache_and_early_exits() {
     use rbitcoin_ibd::ibd::dial::release_peer_block_work;

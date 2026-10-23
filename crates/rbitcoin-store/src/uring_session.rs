@@ -229,7 +229,7 @@ thread_local! {
     static DEPTH: Cell<u32> = const { Cell::new(0) };
 }
 
-#[allow(clippy::large_enum_variant)] // uring vs pool vs iocp backends
+#[allow(clippy::large_enum_variant)] // The variants are the uring, pool, and IOCP backends.
 #[doc(hidden)]
 pub enum SessionBackend {
     #[cfg(target_os = "linux")]

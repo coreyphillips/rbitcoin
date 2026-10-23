@@ -73,12 +73,14 @@ fn trailing_byte_on_a_regtest_block_is_unknown() {
 fn command_bytes_ok_accepts_null_padded() {
     assert!(command_bytes_ok(b"version\0\0\0\0\0"));
     assert!(command_bytes_ok(b"ping\0\0\0\0\0\0\0\0"));
-    // Digits: BIP155 sendaddrv2 / addrv2 (long form).
+    // BIP155 `sendaddrv2` and `addrv2` contain digits and are still valid commands.
     assert!(command_bytes_ok(b"sendaddrv2\0\0"));
     assert!(command_bytes_ok(b"addrv2\0\0\0\0\0\0"));
     assert!(!command_bytes_ok(b"\xff\xfe\0\0\0\0\0\0\0\0\0\0"));
-    assert!(!command_bytes_ok(b"ping\0x\0\0\0\0\0\0\0")); // non-zero after null
-    assert!(!command_bytes_ok(b"\x01ping\0\0\0\0\0\0\0")); // control char
+    // A non-zero byte after the first null is not a valid command.
+    assert!(!command_bytes_ok(b"ping\0x\0\0\0\0\0\0\0"));
+    // A leading control character is not a valid command.
+    assert!(!command_bytes_ok(b"\x01ping\0\0\0\0\0\0\0"));
 }
 
 #[test]
@@ -135,7 +137,7 @@ fn core_limits_documented() {
     );
     assert_eq!(MAX_HEADERS_RESULTS, 2_000);
     assert_eq!(MAX_LOCATOR_SZ, 101);
-    // Stricter than rust-bitcoin's 5MB
+    // This cap is stricter than rust-bitcoin's 5MB message limit.
     const {
         assert!(MAX_PROTOCOL_MESSAGE_LENGTH < bitcoin::p2p::message::MAX_MSG_SIZE);
     }
@@ -211,7 +213,7 @@ fn frame_helpers_ping_headers_notfound_and_encode_cost() {
     assert!(nf.is_notfound());
     assert!(nf.decode_is_cpu_heavy());
 
-    // Corrupt payload → Unknown path (not a panic).
+    // A corrupt block payload decodes as Unknown instead of panicking.
     let bad = FramedMessage {
         magic,
         command: *b"block\0\0\0\0\0\0\0",
@@ -236,7 +238,6 @@ fn frame_helpers_ping_headers_notfound_and_encode_cost() {
     assert!(encode_is_cpu_heavy(&NetworkMessage::Block(genesis_block(
         Network::Regtest
     ))));
-    // Small inv is cheap; large is heavy.
     use bitcoin::hashes::Hash as _;
     use bitcoin::p2p::message_blockdata::Inventory;
     let small = NetworkMessage::Inv(vec![Inventory::Block(bitcoin::BlockHash::from_byte_array(

@@ -31,14 +31,14 @@ fn eval_md(script_bytes: &[u8], md: bool) -> Result<(), String> {
 #[test]
 fn check_minimal_push_table() {
     assert!(check_minimal_push(&[], 0x00));
-    assert!(!check_minimal_push(&[], 0x4c)); // empty must be OP_0
-    assert!(check_minimal_push(&[5], 0x55)); // OP_5
-    assert!(!check_minimal_push(&[5], 0x01)); // direct push of 5 non-minimal
-    assert!(check_minimal_push(&[0x81], 0x4f)); // OP_1NEGATE
+    assert!(!check_minimal_push(&[], 0x4c)); // an empty push must be OP_0, not a PUSHDATA of length zero
+    assert!(check_minimal_push(&[5], 0x55)); // 0x55 is OP_5, the minimal encoding of 5
+    assert!(!check_minimal_push(&[5], 0x01)); // a direct push of the byte 5 is not minimal
+    assert!(check_minimal_push(&[0x81], 0x4f)); // 0x4f is OP_1NEGATE, the minimal encoding of negative one
     assert!(!check_minimal_push(&[0x81], 0x01));
-    assert!(check_minimal_push(&[0x00], 0x01)); // one zero byte is fine
-    assert!(check_minimal_push(&[0x11], 0x01)); // 17 as direct push
-    assert!(check_minimal_push(&[0u8; 76], 0x4c)); // PUSHDATA1 for 76
+    assert!(check_minimal_push(&[0x00], 0x01)); // a one-byte push of zero is minimal
+    assert!(check_minimal_push(&[0x11], 0x01)); // 17 has no single opcode, so a direct push is minimal
+    assert!(check_minimal_push(&[0u8; 76], 0x4c)); // 76 bytes is past the direct-push range, so OP_PUSHDATA1 is minimal
     assert!(!check_minimal_push(&[0u8; 76], 0x4d));
 }
 
@@ -184,8 +184,8 @@ fn nullfail_hard_fails_nonzero_bad_sig() {
     let sig = vec![0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x01, 0x01];
     let mut script = vec![sig.len() as u8];
     script.extend_from_slice(&sig);
-    script.push(0x00); // empty/invalid pubkey as OP_0
-    script.push(0xac); // CHECKSIG
+    script.push(0x00); // OP_0 stands in for an empty pubkey
+    script.push(0xac); // 0xac is CHECKSIG
     let tx = Transaction {
         version: bitcoin::transaction::Version::TWO,
         lock_time: LockTime::ZERO,

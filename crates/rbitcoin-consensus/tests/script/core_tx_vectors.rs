@@ -138,7 +138,7 @@ fn parse_named_flag_bits(s: &str) -> TxFlags {
 fn parse_tx_valid_flags(s: &str) -> TxFlags {
     let disabled = parse_named_flag_bits(s);
     let mut f = all_implemented_flags();
-    // Disable bits listed in the fixture string.
+    // Each bit named in the fixture string turns that verify flag off.
     if disabled.p2sh {
         f.p2sh = false;
     }
@@ -353,7 +353,7 @@ fn check_transaction_struct(tx: &Transaction) -> Result<(), String> {
     if tx.output.is_empty() {
         return Err("BADTX: vout empty".into());
     }
-    // Output value range + sum (CVE-2010-5139).
+    // Each output, and the sum of outputs, must be in range. This is CVE-2010-5139.
     let mut n_value_out: u64 = 0;
     for o in &tx.output {
         let v = o.value.to_sat();
@@ -368,7 +368,7 @@ fn check_transaction_struct(tx: &Transaction) -> Result<(), String> {
             return Err("BADTX: vouttotal toolarge".into());
         }
     }
-    // Duplicate inputs (CVE-2018-17144).
+    // Duplicate inputs are rejected. This is CVE-2018-17144.
     let mut seen = std::collections::HashSet::new();
     for vin in &tx.input {
         let key = (vin.previous_output.txid, vin.previous_output.vout);

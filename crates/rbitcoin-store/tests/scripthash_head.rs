@@ -53,7 +53,7 @@ fn head_insert_get_clear() {
     // Sidecar tracks occupied; reopen without full scan path for tiny files.
     drop(h);
     let h2 = ScriptHashHead::open(&path).unwrap();
-    assert!(h2.is_known_empty() || h2.occupied() >= 1); // soft-clear keeps slot
+    assert!(h2.is_known_empty() || h2.occupied() >= 1); // A soft clear keeps the slot occupied.
     assert!(h2.get(&key).unwrap().is_none());
     let _ = std::fs::remove_file(&path);
     let _ = std::fs::remove_file(occ_sidecar_path(&path));
@@ -144,7 +144,6 @@ fn scripthash_head_insert_many_full_without_rehash() {
     let mut key = [0u8; 32];
     key[0..8].copy_from_slice(&5u64.to_le_bytes());
     assert!(h2.get(&key).unwrap().is_some());
-    // corrupt size open
     {
         std::fs::OpenOptions::new()
             .write(true)

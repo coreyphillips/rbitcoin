@@ -109,7 +109,7 @@ fn soft_confirm_window_and_band_at_rate() {
     assert!(soft_assign_restricted(over));
 }
 
-#[allow(clippy::cognitive_complexity)] // one fixture, many progress arms
+#[allow(clippy::cognitive_complexity)] // One fixture covers many progress cases, so this test stays in one function.
 #[test]
 fn pct_tip_hole_and_format_surface() {
     assert_eq!(ibd_pct(0, 100), 0);
@@ -195,7 +195,6 @@ fn work_chain_progress_fetch_hole_requires_body_queue() {
     let p2 = work_chain_progress(&hub, &h2h, &mut body, 50, 10);
     assert_eq!(p2.tip_hole, 3);
 
-    // Rejected tip+1 stops the hole walk.
     body.mark_rejected(h1);
     assert!(!claim_ready(&hub, &mut body, 1, &h1));
     let p3 = work_chain_progress(&hub, &h2h, &mut body, 50, 10);
@@ -291,7 +290,7 @@ fn tip_rate_tracker_eta_surface() {
     let now = t0 + Duration::from_secs(300);
     let rate = steady.eta_rate(now).expect("warmed");
     assert!((rate - 1.0).abs() < 0.15, "rate={rate}");
-    // ~7200 remain at ~1 blk/s → ~2h
+    // About 7_200 blocks remain at about one block per second, so the estimate is about two hours.
     let eta = steady.eta_string(now, 400, 7_600);
     assert!(eta.starts_with("eta="), "{eta}");
     assert!(eta.contains('h') || eta.contains('m'), "{eta}");
@@ -301,7 +300,6 @@ fn tip_rate_tracker_eta_surface() {
     tiny.push(t0, 10);
     tiny.push(t0 + Duration::from_millis(100), 11);
     assert!(tiny.eta_rate(t0 + Duration::from_millis(100)).is_none());
-    // tip >= horizon → "done"
     let mut warm = TipRateTracker::new();
     for i in 0u32..=40 {
         warm.push(t0 + Duration::from_secs(u64::from(i) * 2), i * 2);

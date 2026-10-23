@@ -331,7 +331,7 @@ pub fn remember_connected_bip34(query: &Query, params: &ChainParams, prepared: &
 }
 
 /// Durable spentness + maturity + subsidy after scripts (height order).
-#[allow(clippy::too_many_arguments)] // call-site args stay unbundled
+#[allow(clippy::too_many_arguments)] // The call site keeps these arguments unbundled.
 pub fn structural_run(
     query: &Query,
     params: &ChainParams,
@@ -396,7 +396,7 @@ pub fn structural_run(
         tot.create_h_ns = tot.create_h_ns.saturating_add(ph.create_h_ns);
         tot.bip68_ns = tot.bip68_ns.saturating_add(ph.bip68_ns);
     }
-    // Window counters (may race with sampler; last-write uses `tot` instead).
+    // These are window counters. They may race the sampler, so the last write uses `tot` instead.
     crate::note_confirm(
         &query.confirm_stats().structural_ns,
         t0.elapsed().as_nanos() as u64,
