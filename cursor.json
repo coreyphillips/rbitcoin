@@ -1,12 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
-  "new_skip": 0,
+  "new_skip": 179,
   "old_index": 0,
-  "new_cap_used": false,
-  "run_id": "",
-  "old_name": "",
-  "new_len": 0,
-  "new_remaining": 0,
-  "completed_new": 0,
-  "completed_old": 0
+  "new_cap_used": true,
+  "run_id": "41789153561",
+  "old_name": "crates/rbitcoin-cli/src/lib.rs:16:5: replace usage -> String with String::new()",
+  "new_len": 3047,
+  "new_remaining": 2868,
+  "completed_new": 179,
+  "completed_old": 0,
+  "old_len": 29563,
+  "old_remaining": 29563
 }
