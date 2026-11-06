@@ -1,14 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
-  "new_skip": 400,
-  "old_index": 844,
+  "new_skip": 710,
+  "old_index": 853,
   "new_cap_used": true,
-  "run_id": "41987215746",
-  "old_name": "crates/rbitcoin-consensus/src/script_pool.rs:101:14: replace >= with < in Wave::claim_chunk",
+  "run_id": "42180825780",
+  "old_name": "crates/rbitcoin-consensus/src/script_pool.rs:162:15: delete ! in Wave::wait_done",
   "new_len": 3047,
-  "new_remaining": 2647,
-  "completed_new": 0,
-  "completed_old": 659,
+  "new_remaining": 2337,
+  "completed_new": 310,
+  "completed_old": 9,
   "old_len": 29563,
-  "old_remaining": 28904
+  "old_remaining": 29554
 }
