@@ -1,14 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
   "new_skip": 876,
-  "old_index": 1224,
+  "old_index": 1773,
   "new_cap_used": true,
   "run_id": "42347865068",
-  "old_name": "crates/rbitcoin-consensus/src/tx_precompute.rs:504:23: replace != with == in witness_wire",
+  "old_name": "crates/rbitcoin-consensus/src/script/interpreter.rs:1256:14: replace += with -= in checkmultisig_pairs",
   "new_len": 3047,
   "new_remaining": 2171,
-  "completed_new": 166,
-  "completed_old": 72,
+  "completed_new": 0,
+  "completed_old": 549,
   "old_len": 29563,
-  "old_remaining": 29491
+  "old_remaining": 29014
 }
