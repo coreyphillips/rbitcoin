@@ -1,14 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
   "new_skip": 1199,
-  "old_index": 2091,
+  "old_index": 2608,
   "new_cap_used": true,
   "run_id": "42578030254",
-  "old_name": "crates/rbitcoin-electrum/src/server.rs:330:28: replace + with * in read_line_capped",
+  "old_name": "crates/rbitcoin-esplora/src/handlers.rs:1519:13: delete match arm (true, false) in sort_txs_newest_first",
   "new_len": 3047,
   "new_remaining": 1848,
-  "completed_new": 135,
-  "completed_old": 65,
+  "completed_new": 0,
+  "completed_old": 517,
   "old_len": 29563,
-  "old_remaining": 29498
+  "old_remaining": 29046
 }
