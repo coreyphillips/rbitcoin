@@ -1,14 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
-  "new_skip": 1199,
-  "old_index": 2608,
+  "new_skip": 1298,
+  "old_index": 2846,
   "new_cap_used": true,
-  "run_id": "42578030254",
-  "old_name": "crates/rbitcoin-esplora/src/handlers.rs:1519:13: delete match arm (true, false) in sort_txs_newest_first",
+  "run_id": "42777643951",
+  "old_name": "crates/rbitcoin-esplora/src/server.rs:389:13: replace || with && in EsploraListen::parse",
   "new_len": 3047,
-  "new_remaining": 1848,
-  "completed_new": 0,
-  "completed_old": 517,
+  "new_remaining": 1749,
+  "completed_new": 99,
+  "completed_old": 238,
   "old_len": 29563,
-  "old_remaining": 29046
+  "old_remaining": 29325
 }
