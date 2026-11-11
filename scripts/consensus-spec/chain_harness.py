@@ -74,14 +74,14 @@ class RNode(core.Node):
         token_path = os.path.join(self.dir, "rpc.token")
         while True:
             if self.proc.poll() is not None:
-                raise RuntimeError("rbitcoin-node exited at start: %s" % self.tail())
+                self.abandon("rbitcoin-node exited at start")
             try:
                 self.auth = "Bearer " + open(token_path).read().strip()
                 self.call("getblockcount")
                 break
             except (OSError, core.RPCError, ValueError):
                 if time.time() > deadline:
-                    raise RuntimeError("rbitcoin-node did not come up: %s" % self.tail())
+                    self.abandon("rbitcoin-node did not come up")
                 self.conn = None
                 time.sleep(0.05)
 
@@ -93,13 +93,23 @@ class RNode(core.Node):
         except OSError:
             return ""
 
+    def abandon(self, why):
+        # The harness never holds a node that did not come up, so its stop() will
+        # not run: end the process and remove the datadir here.
+        tail = self.tail()
+        self.reap(0)
+        raise RuntimeError("%s: %s" % (why, tail))
+
     def stop(self):
         try:
             self.call("stop")
         except Exception:  # noqa: BLE001
             pass
+        self.reap(120)
+
+    def reap(self, grace):
         try:
-            self.proc.wait(timeout=120)
+            self.proc.wait(timeout=grace)
         except subprocess.TimeoutExpired:
             self.proc.kill()
             self.proc.wait()
