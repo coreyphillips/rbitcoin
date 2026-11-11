@@ -6,4 +6,5 @@ Added
   and BIP340 verdicts under all 64 consensus flag sets, the Bitcoin Core
   block corpus, and a sync of each corpus chain from Bitcoin Core v32.1
   over P2P. A failure that `scripts/consensus-spec/known-failures.txt`
-  does not name stops the GitHub Release.
+  does not name stops the GitHub Release. The same run is nightly on
+  `master`.
