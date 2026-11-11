@@ -265,7 +265,7 @@ jobs:
   # not publish.
   consensus-spec:
     name: consensus-spec
-    uses: ./.github/workflows/consensus-spec.yml
+    uses: $/.github/workflows/consensus-spec.yml
     with:
       ref: ${{ inputs.ref || github.sha }}
       gate: true
