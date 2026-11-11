@@ -30,7 +30,8 @@ corpus feature_block_reorg.node0 check 131
 corpus feature_block_reorg.node0 check 132
 
 # No regtest -test=bip94 (COMPAT.md, BIP94). BIP94 is enforced on testnet4
-# only, so these scenarios cannot be configured.
+# only, so these scenarios cannot be configured. Each file's errors are named
+# from the refused chain_reset, so an error before it is not covered.
 corpus feature_spec_pitfalls.node2 check 1
 corpus feature_spec_pitfalls.node2 check 2
 corpus feature_spec_pitfalls.node2 check 3
@@ -38,7 +39,7 @@ corpus feature_spec_pitfalls.node2 check 4
 corpus feature_spec_pitfalls.node2 check 5
 corpus feature_spec_pitfalls.node2 check 6
 corpus feature_spec_pitfalls.node2 check 7
-corpus feature_spec_pitfalls.node2 errors
+corpus feature_spec_pitfalls.node2 errors from event 0
 corpus mining_basic.node0 check 265
 corpus mining_basic.node0 check 266
 corpus mining_basic.node0 check 267
@@ -46,5 +47,5 @@ corpus mining_basic.node0 check 268
 corpus mining_basic.node0 check 269
 corpus mining_basic.node0 check 270
 corpus mining_basic.node0 check 271
-corpus mining_basic.node0 errors
+corpus mining_basic.node0 errors from event 642
 interop chain feature_spec_pitfalls.node2
