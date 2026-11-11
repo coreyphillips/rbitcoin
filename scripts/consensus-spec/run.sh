@@ -17,7 +17,10 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 source "$HERE/pin.env"
 : "${BCS_SPEC:?set BCS_SPEC to a $BCS_REPO checkout at $BCS_COMMIT}"
 BCS_SPEC="$(cd "$BCS_SPEC" && pwd)"
-BIN="${CARGO_TARGET_DIR:-$ROOT/target}/release"
+# cargo resolves a relative CARGO_TARGET_DIR against the directory build runs in.
+target="${CARGO_TARGET_DIR:-target}"
+[[ "$target" == /* ]] || target="$ROOT/$target"
+BIN="$target/release"
 LOGS="${BCS_LOGS:-$ROOT/target/consensus-spec}"
 export BCS_SPEC
 export RBTC_NODE="$BIN/rbitcoin-node"
@@ -27,6 +30,10 @@ if [[ "$at" != "$BCS_COMMIT" ]]; then
   echo "run.sh: $BCS_SPEC is at $at, pin.env pins $BCS_COMMIT" >&2
   exit 2
 fi
+
+# One sh -c word, as the runner's shell_quote makes them: bcs-conformance runs
+# --impl and --node through sh -c.
+shq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 
 suite() {
   local name="$1"
@@ -50,11 +57,11 @@ case "${1:-}" in
       --bin rbitcoin-node --bin bcs-harness)
     ;;
   vectors)
-    suite vectors --impl "$BIN/bcs-harness" --exclude corpus
+    suite vectors --impl "$(shq "$BIN/bcs-harness")" --exclude corpus
     ;;
   corpus)
     suite corpus --suite corpus --timeout 900 \
-      --impl "python3 -I $HERE/chain_harness.py"
+      --impl "python3 -I $(shq "$HERE/chain_harness.py")"
     ;;
   interop)
     bitcoind="${2:?usage: run.sh interop BITCOIND}"
@@ -64,7 +71,7 @@ case "${1:-}" in
       exit 2
     fi
     suite interop --suite interop --v2transport --bitcoind "$bitcoind" --node-timeout 900 \
-      --node "python3 -I $HERE/interop_node.py --network {network} --datadir {datadir} --peer {peer} --stop-at {stop_at} --options {options}"
+      --node "python3 -I $(shq "$HERE/interop_node.py") --network {network} --datadir {datadir} --peer {peer} --stop-at {stop_at} --options {options}"
     ;;
   *)
     echo "usage: $0 build|vectors|corpus|interop BITCOIND" >&2
