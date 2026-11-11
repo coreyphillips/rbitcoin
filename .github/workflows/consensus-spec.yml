@@ -2,13 +2,18 @@
 # vector suites, the block corpus, and interop against bitcoind, at the spec
 # revision scripts/consensus-spec/pin.env pins. release.yml calls it with
 # `gate: true` and `publish` needs it, so a tag that diverges from the spec's
-# Bitcoin Core does not become a GitHub Release. Also workflow_dispatch and
-# label `consensus-spec`. Not a required PR check.
+# Bitcoin Core does not become a GitHub Release. Nightly on the default
+# branch too, so a regression, or a known-failures.txt line that no longer
+# fails, shows up the day after its commit rather than at the tag. Also
+# workflow_dispatch and label `consensus-spec`. Not a required PR check.
 #
 # No build cache: this gates a publish, and a cold build fits the timeout.
 name: consensus-spec
 
 on:
+  schedule:
+    # Off the hour, clear of the other nightlies.
+    - cron: "53 7 * * *"
   workflow_call:
     inputs:
       ref:
@@ -23,7 +28,9 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
 concurrency:
-  group: consensus-spec-${{ inputs.gate && 'gate-' || '' }}${{ github.event.pull_request.number || github.ref }}
+  # The nightly has its own group, so a dispatch on the default branch does
+  # not cancel it.
+  group: consensus-spec-${{ github.event_name == 'schedule' && 'schedule-' || '' }}${{ inputs.gate && 'gate-' || '' }}${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:

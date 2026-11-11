@@ -93,7 +93,8 @@ header version/time, `finality_tests`, `sigop_cost_tests`,
 is an executable specification pinned to Bitcoin Core v32.1, with a
 conformance runner. The revision we run is `scripts/consensus-spec/pin.env`.
 `release.yml` runs it on every tag before `publish`
-([`releases.md`](./releases.md)). Label **`consensus-spec`** runs it on a PR.
+([`releases.md`](./releases.md)), and it runs nightly on `master`, so a red
+night names the day's commits. Label **`consensus-spec`** runs it on a PR.
 
 | Suite | Driver | Gate |
 |-------|--------|------|
