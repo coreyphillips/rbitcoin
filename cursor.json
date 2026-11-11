@@ -1,14 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
   "new_skip": 1524,
-  "old_index": 3234,
+  "old_index": 3684,
   "new_cap_used": true,
   "run_id": "42977736167",
-  "old_name": "crates/rbitcoin-ibd/src/ibd/assign.rs:60:24: replace < with <= in download_gate_closed",
+  "old_name": "crates/rbitcoin-ibd/src/ibd/confirm/mod.rs:348:9: replace ConfirmFeed::stopped -> bool with false",
   "new_len": 3047,
   "new_remaining": 1523,
-  "completed_new": 226,
-  "completed_old": 92,
+  "completed_new": 0,
+  "completed_old": 450,
   "old_len": 29563,
-  "old_remaining": 29471
+  "old_remaining": 29113
 }
