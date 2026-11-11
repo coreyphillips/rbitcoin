@@ -11,6 +11,9 @@
 # pushes the multi-arch manifest to GHCR, and to Docker Hub when the repo
 # variable DOCKERHUB_REPOSITORY is set, after the Release exists.
 #
+# `publish` also needs `consensus-spec` (consensus-spec.yml): the tag's SHA
+# against bitcoin-consensus-spec's suites, at scripts/consensus-spec/pin.env.
+#
 # Triggers:
 #   - push of tag v*.*.* (publishes the Release and the image)
 #   - workflow_dispatch (build and smoke only; no tag → no Release, no push)
@@ -258,6 +261,15 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  # bitcoin-consensus-spec conformance at this SHA. A tag that fails it does
+  # not publish.
+  consensus-spec:
+    name: consensus-spec
+    uses: ./.github/workflows/consensus-spec.yml
+    with:
+      ref: ${{ inputs.ref || github.sha }}
+      gate: true
+
   nixos-module-runtime:
     name: nixos-module-runtime
     runs-on: ubuntu-latest
@@ -288,7 +300,7 @@ jobs:
 
   publish:
     name: github-release
-    needs: [musl, docker, windows, macos, nixos-module-runtime]
+    needs: [musl, docker, windows, macos, nixos-module-runtime, consensus-spec]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15

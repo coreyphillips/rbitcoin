@@ -87,6 +87,40 @@ Selector: `./scripts/test-hornet-rules.sh` (runs `structure_rule_tests`,
 header version/time, `finality_tests`, `sigop_cost_tests`,
 `consensus_rules`).
 
+## bitcoin-consensus-spec
+
+[bitcoin-consensus-spec](https://github.com/coreyphillips/bitcoin-consensus-spec)
+is an executable specification pinned to Bitcoin Core v32.1, with a
+conformance runner. The revision we run is `scripts/consensus-spec/pin.env`.
+`release.yml` runs it on every tag before `publish`
+([`releases.md`](./releases.md)). Label **`consensus-spec`** runs it on a PR.
+
+| Suite | Driver | Gate |
+|-------|--------|------|
+| vectors | `bcs-harness` (`rbitcoin-test`), in process: `ScriptCheckJob` and `script::verify_input`, the `CheckTransaction` pieces, the legacy and taproot sighash, the control-block commitment, BIP340 | Core's script, tx and sighash vectors, the BIP341 and BIP340 vectors, and qa-assets `script_assets_test.json`: every script query under all 64 consensus flag sets, against Core's verdict |
+| corpus | `chain_harness.py`: a fresh `rbitcoin-node --network regtest` per scenario, blocks through `submitblock` | Tip and height at every normative check of Core's recorded block scenarios. The harness applies Core's P2P delivery rules, so our P2P code is not under test here |
+| interop | `interop_node.py`: `rbitcoin-node --connect` to bitcoind v32.1, BIP324 v2 | Tip and height after syncing each scenario's chain, with no `Misbehaving` line in bitcoind's log |
+
+Level 2 is reported, not gated: our script error tokens are not Core's
+names, and we keep no UTXO set to hash.
+
+`scripts/consensus-spec/known-failures.txt` names each check we are known
+to fail, with the reason. A failure it does not name fails the run. So does
+an entry that no longer fails: delete its line in the change that fixes it.
+
+```bash
+export BCS_SPEC=/path/to/bitcoin-consensus-spec   # at pin.env's BCS_COMMIT
+./scripts/consensus-spec/run.sh build
+./scripts/consensus-spec/run.sh vectors           # about a minute
+./scripts/consensus-spec/run.sh corpus            # about 20 minutes
+# Linux; elsewhere pass a bitcoind v32.1.
+./scripts/consensus-spec/run.sh interop "$(./scripts/core-functional/fetch-bitcoind.sh)"
+```
+
+To move the pin, set `BCS_COMMIT` (and `BCS_CORE_VERSION` when the spec
+moves to another Core release), run all three, and update
+`known-failures.txt` from the `FAIL` and `STALE` lines.
+
 ## A. Block structure — `validate_block_structure_hashed`
 
 | ID | Rule | Error signal | Test |
