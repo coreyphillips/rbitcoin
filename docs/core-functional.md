@@ -278,7 +278,7 @@ built (otherwise `--list` only). The warning compares **semver of
 final releases**, not GitHub’s `/releases/latest` — Core still ships
 older maintenance tags after a newer major. Bump `third_party/bitcoin`,
 the JSON corpora, and the inventory when it fires. A new `[release]` stops
-the consensus-spec interop suite, nightly and on every ship PR and tag,
+the consensus-spec interop suite, weekly and on every ship PR and tag,
 until `scripts/consensus-spec/pin.env` names a spec revision for that
 release: move both in one change.
 
