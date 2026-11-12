@@ -65,7 +65,12 @@ case "${1:-}" in
     ;;
   interop)
     bitcoind="${2:?usage: run.sh interop BITCOIND}"
-    version="$("$bitcoind" --version | head -n 1)"
+    # suite() runs from the spec checkout.
+    [[ "$bitcoind" == /* ]] || bitcoind="$PWD/$bitcoind"
+    # bitcoind writes settings.json into its datadir even for --version.
+    probe="$(mktemp -d "${TMPDIR:-/tmp}/rbtc-bcs-probe.XXXXXX")"
+    trap 'rm -rf "$probe"' EXIT
+    version="$("$bitcoind" -datadir="$probe" --version | head -n 1)"
     if [[ "$version" != *" $BCS_CORE_VERSION"* ]]; then
       echo "run.sh: $bitcoind is \"$version\", the spec is pinned to $BCS_CORE_VERSION" >&2
       exit 2
