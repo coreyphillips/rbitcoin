@@ -87,7 +87,10 @@ jobs:
         id: bitcoind
         run: |
           set -euo pipefail
-          echo "path=$(./scripts/core-functional/fetch-bitcoind.sh)" >> "$GITHUB_OUTPUT"
+          # Assigned first: a failed substitution inside echo's argument
+          # would not stop the step.
+          path="$(./scripts/core-functional/fetch-bitcoind.sh)"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
 
       - name: Run ${{ matrix.suite }}
         env:

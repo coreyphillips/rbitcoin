@@ -14,6 +14,7 @@ progress before giving up, default 120).
 """
 
 import argparse
+import atexit
 import http.client
 import json
 import os
@@ -97,11 +98,25 @@ def main():
     proc = subprocess.Popen(args, stdout=log, stderr=subprocess.STDOUT, env=env)
     # The runner SIGKILLs this wrapper on --node-timeout, which no handler sees,
     # so a detached watchdog stops rbitcoin-node once this process is gone.
-    subprocess.Popen(["/bin/sh", "-c",
-                      "while kill -0 %d 2>/dev/null; do sleep 1; done; "
-                      "kill %d 2>/dev/null; sleep 15; kill -9 %d 2>/dev/null" % (os.getpid(), proc.pid, proc.pid)],
-                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                     start_new_session=True)
+    watchdog = subprocess.Popen(
+        ["/bin/sh", "-c",
+         "while kill -0 %d 2>/dev/null; do sleep 1; done; kill %d 2>/dev/null; "
+         "i=0; while [ $i -lt 15 ] && kill -0 %d 2>/dev/null; do sleep 1; i=$((i+1)); done; "
+         "kill -0 %d 2>/dev/null && kill -9 %d" % (os.getpid(), proc.pid, proc.pid, proc.pid, proc.pid)],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True)
+
+    def reap():
+        # On every exit Python sees. The watchdog acts only once this process is
+        # gone, so ending it here leaves it nothing to signal; it stays for a
+        # SIGKILL alone. Then make sure the node is down.
+        watchdog.kill()
+        watchdog.wait()
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+
+    atexit.register(reap)
     rpc = Rpc(port, os.path.join(a.datadir, "rpc.token"))
 
     def stop(code):
