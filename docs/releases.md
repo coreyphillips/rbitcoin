@@ -85,8 +85,8 @@ GitHub merge creates the ship SHA. The tag must point at **that** SHA, not
 the topic-branch tip (squash/rebase would move it). Closest sequence:
 
 1. Version-bump PR reaches required checks **plus** `release-extra`
-   (below). Label it **`consensus-spec`** too: a tag that fails that
-   workflow does not publish, and its version is then spent.
+   (below). On a ship PR that includes `consensus-spec`: a tag that fails
+   it does not publish, and its version is then spent.
 2. Merge (`gh pr merge --merge` — merge commit, not squash).
 3. **Immediately** tag `vX.Y.Z` on `mergeCommit.oid` and push **only the
    tag** (`./scripts/release.sh --tag-only` or `./scripts/release-post.sh`).
@@ -171,12 +171,12 @@ waits its turn instead of cancelling the one already pending.
 ## CI gates on a ship PR
 
 A **ship PR** is one whose tree version is not `.99` (detect job reads
-Cargo.toml). Those PRs run Core functional, overlay functional, and the
-Warnet example even without a label. [`release-gate.yml`](../.github/workflows/release-gate.yml)
+Cargo.toml). Those PRs run Core functional, overlay functional, the
+Warnet example, and consensus-spec even without a label. [`release-gate.yml`](../.github/workflows/release-gate.yml)
 owns ship detection. On a ship PR or label **`release`** it calls
-`core-functional.yml`, `overlay-functional.yml`, and `warnet-example.yml`
-(`workflow_call`) so `release-extra` can `needs:` all three. Those checks
-show as `core-functional / core-functional` and so on.
+`core-functional.yml`, `overlay-functional.yml`, `warnet-example.yml`, and
+`consensus-spec.yml` (`workflow_call`) so `release-extra` can `needs:` all
+four. Those checks show as `core-functional / core-functional` and so on.
 
 | Check | Who |
 |-------|-----|
@@ -186,8 +186,8 @@ show as `core-functional / core-functional` and so on.
 | `overlay-functional` | Nightly (`42 6`), `workflow_dispatch`, label **`overlay-functional`**; via `release-gate.yml` on label **`release`** **or** ship version |
 | `warnet-example` | Label **`warnet`**, `workflow_dispatch`; via `release-gate.yml` on label **`release`** **or** ship version. Two-tank Docker lab. |
 | `nixos-module-runtime` | Label **`nixos-module-runtime`**, `workflow_dispatch`, **or** GitHub Release tags (`release.yml`). Not required. |
-| `consensus-spec` | GitHub Release tags (`release.yml`; `publish` needs it), nightly (`53 7`), `workflow_dispatch`, label **`consensus-spec`** (`consensus-spec.yml`). Not required on a PR. What it runs: [`consensus-tests.md`](./consensus-tests.md#bitcoin-consensus-spec) |
-| `release-extra` | Every PR (`release-gate.yml`). **Fails** if the PR is ship and any of `core-functional`, `overlay-functional`, `warnet-example` is not success |
+| `consensus-spec` | Via `release-gate.yml` on label **`release`** **or** ship version; GitHub Release tags (`release.yml`; `publish` needs it); nightly (`53 7`), `workflow_dispatch`, label **`consensus-spec`** (`consensus-spec.yml`). Not required on other PRs. What it runs: [`consensus-tests.md`](./consensus-tests.md#bitcoin-consensus-spec) |
+| `release-extra` | Every PR (`release-gate.yml`). **Fails** if the PR is ship and any of `core-functional`, `overlay-functional`, `warnet-example`, `consensus-spec` is not success |
 | `zizmor` | Every PR, push to `master` / `main`, and Monday 05:23 UTC (`zizmor.yml`). Audits Actions workflows. The job stays green when it finds issues. Merge blocking is the Protected ruleset code-scanning tool, which must be `zizmor` (security alerts high or higher, other alerts errors). Not a required status check. `v*.*.x` is in that same ruleset, so those branches need `zizmor.yml` before the tool name changes |
 
 Label ship PRs **`release`**. The detect job is the backstop if the label
