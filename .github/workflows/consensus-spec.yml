@@ -1,11 +1,13 @@
 # bitcoin-consensus-spec conformance (scripts/consensus-spec/run.sh): the
 # vector suites, the block corpus, and interop against bitcoind, at the spec
-# revision scripts/consensus-spec/pin.env pins. release.yml calls it with
-# `gate: true` and `publish` needs it, so a tag that diverges from the spec's
-# Bitcoin Core does not become a GitHub Release. Nightly on the default
-# branch too, so a regression, or a known-failures.txt line that no longer
-# fails, shows up the day after its commit rather than at the tag. Also
-# workflow_dispatch and label `consensus-spec`. Not a required PR check.
+# revision scripts/consensus-spec/pin.env pins. release-gate.yml calls it with
+# `gate: true` on a ship PR, and `release-extra` fails that PR unless it
+# passes. release.yml calls it again on the tag and `publish` needs it, so a
+# tag that diverges from the spec's Bitcoin Core does not become a GitHub
+# Release. Nightly on the default branch too, so a regression, or a
+# known-failures.txt line that no longer fails, shows up the day after its
+# commit rather than at the next ship PR. Also workflow_dispatch and label
+# `consensus-spec`. Not a required check on other PRs.
 #
 # No build cache: this gates a publish, and a cold build fits the timeout.
 name: consensus-spec
