@@ -81,7 +81,8 @@ jobs:
           BCS_SPEC: .bcs
         run: ./scripts/consensus-spec/run.sh build
 
-      # The core-functional pin. run.sh refuses a version the spec is not pinned to.
+      # Its own pin, scripts/consensus-spec/bitcoind.toml. run.sh refuses a
+      # version the spec is not pinned to.
       - name: Fetch bitcoind
         if: matrix.suite == 'interop'
         id: bitcoind
@@ -89,7 +90,7 @@ jobs:
           set -euo pipefail
           # Assigned first: a failed substitution inside echo's argument
           # would not stop the step.
-          path="$(./scripts/core-functional/fetch-bitcoind.sh)"
+          path="$(FETCH_BITCOIND_INVENTORY=scripts/consensus-spec/bitcoind.toml ./scripts/core-functional/fetch-bitcoind.sh)"
           echo "path=$path" >> "$GITHUB_OUTPUT"
 
       - name: Run ${{ matrix.suite }}

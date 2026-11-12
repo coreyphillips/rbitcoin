@@ -4,8 +4,6 @@
 pin = "v32.1"
 core_commit = "e211dd0186e9646167d063a16f0da88e5f72e05f"
 
-# Also the consensus-spec interop suite's bitcoind: scripts/consensus-spec/run.sh
-# refuses a release other than pin.env's BCS_CORE_VERSION. Move both together.
 [release]
 base_url = "https://bitcoincore.org/bin/bitcoin-core-32.1"
 
