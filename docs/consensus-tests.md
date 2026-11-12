@@ -116,12 +116,16 @@ export BCS_SPEC=/path/to/bitcoin-consensus-spec   # at pin.env's BCS_COMMIT
 ./scripts/consensus-spec/run.sh vectors           # about a minute
 ./scripts/consensus-spec/run.sh corpus            # about 20 minutes
 # Linux; elsewhere pass a bitcoind v32.1.
-./scripts/consensus-spec/run.sh interop "$(./scripts/core-functional/fetch-bitcoind.sh)"
+./scripts/consensus-spec/run.sh interop \
+  "$(FETCH_BITCOIND_INVENTORY=scripts/consensus-spec/bitcoind.toml ./scripts/core-functional/fetch-bitcoind.sh)"
 ```
 
-To move the pin, set `BCS_COMMIT` (and `BCS_CORE_VERSION` when the spec
-moves to another Core release), run all three, and update
-`known-failures.txt` from the `FAIL` and `STALE` lines.
+To move the pin, set `BCS_COMMIT`, run all three, and update
+`known-failures.txt` from the `FAIL` and `STALE` lines. When the spec moves
+to another Core release, also set `BCS_CORE_VERSION` and point
+`scripts/consensus-spec/bitcoind.toml` at that release's tarballs and
+SHA256s (`pin.test.sh` checks they agree). Interop's bitcoind is its own
+pin, so core-functional's `[release]` can move without it.
 
 ## A. Block structure — `validate_block_structure_hashed`
 
