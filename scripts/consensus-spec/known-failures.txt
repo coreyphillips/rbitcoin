@@ -21,11 +21,12 @@ corpus feature_block_reorg.node0 check 88
 corpus feature_block_reorg.node0 check 89
 corpus feature_block_reorg.node0 check 90
 
-# A 1,088-block reorg onto a branch delivered before it became best.
-# rbitcoin holds never-connected side bodies in memory only, and not more
-# than HeldBodies::STALE_BELOW (288) blocks below the tip; the rest come from
-# a peer. submitblock leaves no peer, so it stays on the old branch. Interop
-# syncs this chain over P2P but never does this reorg.
+# A 1,088-block reorg onto a branch delivered before it became best: open
+# finding 088 F3 (docs/external_findings/088-tip-chain-selection.md), not a
+# harness effect. Tip-follow cannot assemble a branch that forks more than
+# HeldBodies::STALE_BELOW (288) blocks below the tip and does not hand off to
+# the IBD rewind, which refuses more than REWIND_MAX_DEPTH (1024). A peer
+# would not help. Interop syncs this chain over P2P but never does this reorg.
 corpus feature_block_reorg.node0 check 131
 corpus feature_block_reorg.node0 check 132
 

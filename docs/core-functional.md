@@ -136,6 +136,9 @@ it names the `[release]` tarballs. Those can differ when the tree is a
 master commit. Optional `[release]`
 pins official `bitcoind` tarball SHA256s for differential fuzz
 (`scripts/core-functional/release_pin.py`, `fetch-bitcoind.sh`). The
+consensus-spec interop suite runs that `bitcoind` too, and refuses any
+release other than `BCS_CORE_VERSION` in `scripts/consensus-spec/pin.env`
+([`consensus-tests.md`](./consensus-tests.md#bitcoin-consensus-spec)). The
 inventory checker only reads `[[test]]` rows and ignores `[release]`.
 
 | Field | Rule |
@@ -274,7 +277,10 @@ fail) if a newer Bitcoin Core *release* exists than `inventory.toml`
 built (otherwise `--list` only). The warning compares **semver of
 final releases**, not GitHub’s `/releases/latest` — Core still ships
 older maintenance tags after a newer major. Bump `third_party/bitcoin`,
-the JSON corpora, and the inventory when it fires.
+the JSON corpora, and the inventory when it fires. A new `[release]` stops
+the consensus-spec interop suite, nightly and on every ship PR and tag,
+until `scripts/consensus-spec/pin.env` names a spec revision for that
+release: move both in one change.
 
 ```bash
 python3 scripts/core-functional/check_core_release.py --latest v32.1
