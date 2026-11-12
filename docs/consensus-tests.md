@@ -94,8 +94,8 @@ is an executable specification pinned to Bitcoin Core v32.1, with a
 conformance runner. The revision we run is `scripts/consensus-spec/pin.env`.
 `release-gate.yml` runs it on a ship PR, where `release-extra` needs it, and
 `release.yml` runs it again on the tag before `publish`
-([`releases.md`](./releases.md)). It runs nightly on `master`, so a red
-night names the day's commits. Label **`consensus-spec`** runs it on any PR.
+([`releases.md`](./releases.md)). It runs weekly on `master`, so a red
+run names at most a week of commits. Label **`consensus-spec`** runs it on any PR.
 
 | Suite | Driver | Gate |
 |-------|--------|------|
