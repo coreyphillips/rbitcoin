@@ -4,18 +4,18 @@
 # `gate: true` on a ship PR, and `release-extra` fails that PR unless it
 # passes. release.yml calls it again on the tag and `publish` needs it, so a
 # tag that diverges from the spec's Bitcoin Core does not become a GitHub
-# Release. Nightly on the default branch too, so a regression, or a
-# known-failures.txt line that no longer fails, shows up the day after its
-# commit rather than at the next ship PR. Also workflow_dispatch and label
-# `consensus-spec`. Not a required check on other PRs.
+# Release. Weekly on the default branch too, so a regression, or a
+# known-failures.txt line that no longer fails, shows up within a week of
+# its commit rather than at the next ship PR. Also workflow_dispatch and
+# label `consensus-spec`. Not a required check on other PRs.
 #
 # No build cache: this gates a publish, and a cold build fits the timeout.
 name: consensus-spec
 
 on:
   schedule:
-    # Off the hour, clear of the other nightlies.
-    - cron: "53 7 * * *"
+    # Mondays, off the hour, clear of the nightlies and zizmor.
+    - cron: "53 7 * * 1"
   workflow_call:
     inputs:
       ref:
@@ -30,8 +30,8 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
 concurrency:
-  # The nightly has its own group, so a dispatch on the default branch does
-  # not cancel it.
+  # The weekly run has its own group, so a dispatch on the default branch
+  # does not cancel it.
   group: consensus-spec-${{ github.event_name == 'schedule' && 'schedule-' || '' }}${{ inputs.gate && 'gate-' || '' }}${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 

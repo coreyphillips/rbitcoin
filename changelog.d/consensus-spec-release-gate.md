@@ -7,5 +7,5 @@ Added
   block corpus, and a sync of each corpus chain from Bitcoin Core v32.1
   over P2P. A failure that `scripts/consensus-spec/known-failures.txt`
   does not name stops the GitHub Release. A ship PR runs it first, and
-  `release-extra` fails the PR unless it passes. The same run is nightly
+  `release-extra` fails the PR unless it passes. The same run is weekly
   on `master`.
