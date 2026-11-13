@@ -102,6 +102,7 @@ run names at most a week of commits. Label **`consensus-spec`** runs it on any P
 | vectors | `bcs-harness` (`rbitcoin-test`), in process: `ScriptCheckJob` and `script::verify_input`, the `CheckTransaction` pieces, the legacy and taproot sighash, the control-block commitment, BIP340 | Core's script, tx and sighash vectors, the BIP341 and BIP340 vectors, and qa-assets `script_assets_test.json`: every script query under all 64 consensus flag sets, against Core's verdict |
 | corpus | `chain_harness.py`: a fresh `rbitcoin-node --network regtest` per scenario, blocks through `submitblock` | Tip and height at every normative check of Core's recorded block scenarios. The harness applies Core's P2P delivery rules, so our P2P code is not under test here |
 | interop | `interop_node.py`: `rbitcoin-node --connect` to bitcoind v32.1, BIP324 v2 | Tip and height after syncing each scenario's chain, with no `Misbehaving` line in bitcoind's log |
+| peer-sync | `sync_node.py`: `rbitcoin-node --connect` to the runner, BIP324 v2. bitcoind v32.1 only tells which corpus blocks Core rejects | The runner is our only peer and serves each scenario's chain with every recorded block Core rejects on it, through our own sync. After each one the tip must still be its parent: one node takes them all in chain order, then reaches the final tip (follow), and a fresh node meets each at the end of its initial block download (ibd, 32 per scenario), the shape of #1537 |
 
 Level 2 is reported, not gated: our script error tokens are not Core's
 names, and we keep no UTXO set to hash.
@@ -116,11 +117,17 @@ export BCS_SPEC=/path/to/bitcoin-consensus-spec   # at pin.env's BCS_COMMIT
 ./scripts/consensus-spec/run.sh vectors           # about a minute
 ./scripts/consensus-spec/run.sh corpus            # about 20 minutes
 # Linux; elsewhere pass a bitcoind v32.1.
-./scripts/consensus-spec/run.sh interop \
-  "$(FETCH_BITCOIND_INVENTORY=scripts/consensus-spec/bitcoind.toml ./scripts/core-functional/fetch-bitcoind.sh)"
+BITCOIND="$(FETCH_BITCOIND_INVENTORY=scripts/consensus-spec/bitcoind.toml ./scripts/core-functional/fetch-bitcoind.sh)"
+./scripts/consensus-spec/run.sh interop "$BITCOIND"
+./scripts/consensus-spec/run.sh peer-sync "$BITCOIND"   # about an hour
 ```
 
-To move the pin, set `BCS_COMMIT`, run all three, and update
+peer-sync needs no harness of ours: `sync_node.py` answers the runner's tip
+requests on standard input over RPC. It catches #1537 often, not always:
+the merged write that bug needed happens only when the confirm engine is
+still busy when the rejected block arrives.
+
+To move the pin, set `BCS_COMMIT`, run all four, and update
 `known-failures.txt` from the `FAIL` and `STALE` lines. When the spec moves
 to another Core release, also set `BCS_CORE_VERSION` and point
 `scripts/consensus-spec/bitcoind.toml` at that release's tarballs and

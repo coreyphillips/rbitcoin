@@ -26,7 +26,8 @@ corpus feature_block_reorg.node0 check 90
 # harness effect. Tip-follow cannot assemble a branch that forks more than
 # HeldBodies::STALE_BELOW (288) blocks below the tip and does not hand off to
 # the IBD rewind, which refuses more than REWIND_MAX_DEPTH (1024). A peer
-# would not help. Interop syncs this chain over P2P but never does this reorg.
+# would not help. Interop and peer-sync sync this chain over P2P but never do
+# this reorg.
 corpus feature_block_reorg.node0 check 131
 corpus feature_block_reorg.node0 check 132
 
@@ -50,3 +51,5 @@ corpus mining_basic.node0 check 270
 corpus mining_basic.node0 check 271
 corpus mining_basic.node0 errors from event 642
 interop chain feature_spec_pitfalls.node2
+peer-sync feature_spec_pitfalls.node2 follow
+peer-sync feature_spec_pitfalls.node2 ibd
