@@ -5,6 +5,8 @@
 #   run.sh vectors            script, tx, sighash, taproot and BIP340 suites, in process
 #   run.sh corpus             the block corpus against rbitcoin-node over RPC
 #   run.sh interop BITCOIND   rbitcoin-node syncing each corpus chain from bitcoind
+#   run.sh peer-sync BITCOIND rbitcoin-node syncing each corpus chain from the runner,
+#                             blocks Core rejects included (bitcoind classifies them)
 #
 # BCS_SPEC is a checkout of BCS_REPO at BCS_COMMIT (pin.env). A run fails on any
 # failure known-failures.txt does not name, and on an entry there that no longer
@@ -35,6 +37,23 @@ fi
 # --impl and --node through sh -c.
 shq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 
+# An absolute path to a bitcoind of the pinned Core release, or exit 2.
+pinned_bitcoind() {
+  local bitcoind="$1"
+  # suite() runs from the spec checkout.
+  [[ "$bitcoind" == /* ]] || bitcoind="$PWD/$bitcoind"
+  # bitcoind writes settings.json into its datadir even for --version.
+  local probe version
+  probe="$(mktemp -d "${TMPDIR:-/tmp}/rbtc-bcs-probe.XXXXXX")"
+  version="$("$bitcoind" -datadir="$probe" --version | head -n 1)"
+  rm -rf "$probe"
+  if [[ "$version" != *" $BCS_CORE_VERSION"* ]]; then
+    echo "run.sh: $bitcoind is \"$version\", the spec is pinned to $BCS_CORE_VERSION" >&2
+    exit 2
+  fi
+  printf '%s' "$bitcoind"
+}
+
 suite() {
   local name="$1"
   shift
@@ -64,22 +83,17 @@ case "${1:-}" in
       --impl "python3 -I $(shq "$HERE/chain_harness.py")"
     ;;
   interop)
-    bitcoind="${2:?usage: run.sh interop BITCOIND}"
-    # suite() runs from the spec checkout.
-    [[ "$bitcoind" == /* ]] || bitcoind="$PWD/$bitcoind"
-    # bitcoind writes settings.json into its datadir even for --version.
-    probe="$(mktemp -d "${TMPDIR:-/tmp}/rbtc-bcs-probe.XXXXXX")"
-    trap 'rm -rf "$probe"' EXIT
-    version="$("$bitcoind" -datadir="$probe" --version | head -n 1)"
-    if [[ "$version" != *" $BCS_CORE_VERSION"* ]]; then
-      echo "run.sh: $bitcoind is \"$version\", the spec is pinned to $BCS_CORE_VERSION" >&2
-      exit 2
-    fi
+    bitcoind="$(pinned_bitcoind "${2:?usage: run.sh interop BITCOIND}")"
     suite interop --suite interop --v2transport --bitcoind "$bitcoind" --node-timeout 900 \
       --node "python3 -I $(shq "$HERE/interop_node.py") --network {network} --datadir {datadir} --peer {peer} --stop-at {stop_at} --options {options}"
     ;;
+  peer-sync)
+    bitcoind="$(pinned_bitcoind "${2:?usage: run.sh peer-sync BITCOIND}")"
+    suite peer-sync --suite peer-sync --bitcoind "$bitcoind" --node-timeout 120 \
+      --sync-node "python3 -I $(shq "$HERE/sync_node.py") --network {network} --datadir {datadir} --peer {peer} --options {options}"
+    ;;
   *)
-    echo "usage: $0 build|vectors|corpus|interop BITCOIND" >&2
+    echo "usage: $0 build|vectors|corpus|interop BITCOIND|peer-sync BITCOIND" >&2
     exit 2
     ;;
 esac

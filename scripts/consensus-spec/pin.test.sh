@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Contract: the interop suite's bitcoind has its own pin. bitcoind.toml
+# Contract: the interop and peer-sync suites' bitcoind has its own pin. bitcoind.toml
 # resolves through release_pin.py for both Linux arches to the Core release
 # pin.env's BCS_CORE_VERSION names, and consensus-spec.yml fetches from it,
 # not from the core-functional inventory. No network.

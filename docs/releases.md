@@ -148,7 +148,7 @@ An operator with SSH `pushurl` may omit `--no-push`.
 | `musl-x86_64`, `musl-aarch64` | `.#rbitcoin-musl` natively on `ubuntu-latest` / `ubuntu-24.04-arm` |
 | `docker-amd64`, `docker-arm64` | Image from that arch's binaries on a native runner, then `docker-smoke.sh`. No push |
 | `windows`, `macos`, `nixos-module-runtime` | Native snapshots; NixOS VM test |
-| `consensus-spec` | `consensus-spec.yml` with `gate: true` on the tagged commit: the [bitcoin-consensus-spec](./consensus-tests.md#bitcoin-consensus-spec) vectors, corpus and interop suites |
+| `consensus-spec` | `consensus-spec.yml` with `gate: true` on the tagged commit: the [bitcoin-consensus-spec](./consensus-tests.md#bitcoin-consensus-spec) vectors, corpus, interop and peer-sync suites |
 | `github-release` | Needs all of the above. Creates the Release with every asset |
 | `docker-publish` | After the Release. One multi-arch manifest (`linux/amd64`, `linux/arm64`) to GHCR, and to Docker Hub when `vars.DOCKERHUB_REPOSITORY` is set. Tags from `docker-tags.sh` |
 

@@ -291,9 +291,11 @@ jobs:
           retention-days: 90
 
   # bitcoin-consensus-spec conformance at this SHA. A tag that fails it does
-  # not publish.
+  # not publish. Not on a nightly: consensus-spec.yml runs weekly on master
+  # itself, and peer-sync takes about an hour.
   consensus-spec:
     name: consensus-spec
+    if: github.event_name != 'schedule' && !inputs.nightly
     uses: $/.github/workflows/consensus-spec.yml
     with:
       ref: ${{ inputs.ref || github.sha }}
