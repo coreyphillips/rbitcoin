@@ -1,14 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
   "new_skip": 1801,
-  "old_index": 4357,
+  "old_index": 4765,
   "new_cap_used": true,
   "run_id": "43385167477",
-  "old_name": "crates/rbitcoin-ibd/src/ibd/events/mod.rs:403:43: replace && with || in on_empty_headers",
+  "old_name": "crates/rbitcoin-ibd/src/ibd/header_walk.rs:577:49: replace == with != in note_block_inv",
   "new_len": 3047,
   "new_remaining": 1246,
-  "completed_new": 170,
-  "completed_old": 164,
+  "completed_new": 0,
+  "completed_old": 408,
   "old_len": 29563,
-  "old_remaining": 29399
+  "old_remaining": 29155
 }
