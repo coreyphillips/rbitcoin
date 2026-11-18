@@ -97,6 +97,11 @@ def main():
     ap.add_argument("--options", default="{}")
     a = ap.parse_args()
     options = json.loads(a.options or "{}")
+    # As chain_harness.py: an option this wrapper does not apply is refused, not
+    # dropped, so a scenario never runs under rules it did not ask for.
+    unknown = set(options) - {"testactivationheight", "test", "vbparams"}
+    if unknown:
+        fail("unsupported options: %s" % ", ".join(sorted(unknown)))
     if options.get("test"):
         fail("rbitcoin-node has no regtest switch for %s (Core -test=)" % options["test"])
     if options.get("vbparams"):
