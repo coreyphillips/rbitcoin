@@ -105,10 +105,28 @@ fn spent_outputs(req: &Value, tx: &Transaction) -> Result<Vec<TxOut>, Fail> {
 }
 
 fn consensus_flags(v: &Value) -> Result<ScriptVerifyFlags, Fail> {
-    // `buried` sets NULLDUMMY and WITNESS; the request names every flag it wants.
-    let mut f = ScriptVerifyFlags::buried(false, false, false, false, false);
-    f.null_dummy = false;
-    f.witness_active = false;
+    // Every flag off, then the ones the request names. A struct literal, as
+    // the Core JSON fixtures use, so a flag added to `ScriptVerifyFlags` has
+    // to be placed here before this builds, and a changed default in a
+    // constructor cannot turn a policy flag on.
+    let mut f = ScriptVerifyFlags {
+        bip65_active: false,
+        bip112_active: false,
+        bip66_active: false,
+        bip16_active: false,
+        taproot_active: false,
+        minimal_if: false,
+        nullfail: false,
+        low_s: false,
+        strictenc: false,
+        null_dummy: false,
+        minimal_data: false,
+        witness_pubkeytype: false,
+        witness_active: false,
+        discourage_upgradable_witness: false,
+        const_scriptcode: false,
+        cleanstack: false,
+    };
     for name in v.as_array().ok_or_else(|| bad("flags is not an array"))? {
         match name.as_str() {
             Some("P2SH") => f.bip16_active = true,
@@ -151,20 +169,21 @@ fn script_verify(req: &Value) -> Resp {
     let flags = consensus_flags(field(req, "flags")?)?;
     let job = ScriptCheckJob::try_new(prevouts, tx, flags)
         .map_err(|e| internal(format!("ScriptCheckJob: {e}")))?;
-    let verdict = (|| {
-        let ii = InputIndex::in_tx(&job.tx, index)?;
-        let (value, spk) = job.prevout_parts(ii)?;
-        script::verify_input(
-            &job,
-            ii,
-            &job.tx,
-            &mut None,
-            job.pre()?,
-            &crypto::TapSpentHashes::default(),
-            Amount::from_sat(value),
-            spk,
-        )
-    })();
+    // Only `verify_input` gives the verdict. A job that cannot be set up is
+    // this harness failing, and must not count as a script found invalid.
+    let ii = InputIndex::in_tx(&job.tx, index).map_err(|e| bad(e.to_string()))?;
+    let (value, spk) = job.prevout_parts(ii).map_err(|e| internal(e.to_string()))?;
+    let pre = job.pre().map_err(|e| internal(e.to_string()))?;
+    let verdict = script::verify_input(
+        &job,
+        ii,
+        &job.tx,
+        &mut None,
+        pre,
+        &crypto::TapSpentHashes::default(),
+        Amount::from_sat(value),
+        spk,
+    );
     Ok(match verdict {
         Ok(()) => json!({"valid": true, "script_error": "OK"}),
         Err(e) => json!({"valid": false, "script_error": script_error(&e)}),
