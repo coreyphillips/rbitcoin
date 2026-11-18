@@ -69,7 +69,9 @@ class RNode(core.Node):
         # As the Core functional shim does: tip reads wait for the tip-accept lane.
         env["RBITCOIN_RPC_WAIT_TIP_IDLE"] = "1"
         self.log = open(os.path.join(self.dir, "node.log"), "wb")
-        self.proc = subprocess.Popen(args, stdout=self.log, stderr=subprocess.STDOUT, env=env)
+        # Standard input is the runner's request pipe; the node must not share it.
+        self.proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=self.log,
+                                     stderr=subprocess.STDOUT, env=env)
         deadline = time.time() + 120
         token_path = os.path.join(self.dir, "rpc.token")
         while True:
