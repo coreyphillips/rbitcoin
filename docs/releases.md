@@ -251,12 +251,13 @@ From current `origin/master` at `X.Y.99`:
    succeed (preview the GitHub Release text).
 4. PR → `master`. Label `release`. Poll **required +
    `core-functional` + `overlay-functional` + `warnet-example` +
-   `release-extra`**. Also run `release.yml` on the ship branch
-   (`gh workflow run release.yml --ref release/X.(Y+1).0`, `nightly`
-   off) and wait for it to pass. It builds and smokes the Windows,
-   Darwin, image, and NixOS VM jobs the tag's Release needs, and
-   publishes nothing. A job that only fails after the tag leaves a
-   pushed tag with no Release.
+   `consensus-spec` + `release-extra`**. `consensus-spec` is the slow
+   one: its peer-sync job takes about an hour. Also run `release.yml` on
+   the ship branch (`gh workflow run release.yml --ref
+   release/X.(Y+1).0`, `nightly` off) and wait for it to pass. It builds
+   and smokes the Windows, Darwin, image, and NixOS VM jobs the tag's
+   Release needs, and publishes nothing. A job that only fails after the
+   tag leaves a pushed tag with no Release.
 5. `gh pr merge --merge`. Fetch. Create a throwaway branch at
    `origin/master` (or `origin/vX.Y.x`) — do not steal `master` from
    another worktree (`git switch -C tag/vX.Y.Z origin/master`).

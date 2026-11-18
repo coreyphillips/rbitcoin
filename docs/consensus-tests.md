@@ -112,8 +112,16 @@ names, and we keep no UTXO set to hash.
 to fail, with the reason. A failure it does not name fails the run. So does
 an entry that no longer fails: delete its line in the change that fixes it.
 
+When a run is red, reproduce it locally. `run.sh` prints the runner's
+summary and its `FAIL`, `DIVERGE` and `STALE` lines; the full log is
+`target/consensus-spec/<suite>.log`, which CI uploads as the
+`consensus-spec-<suite>` artifact.
+
 ```bash
-export BCS_SPEC=/path/to/bitcoin-consensus-spec   # at pin.env's BCS_COMMIT
+source scripts/consensus-spec/pin.env
+git clone "https://github.com/$BCS_REPO" ../bitcoin-consensus-spec
+git -C ../bitcoin-consensus-spec checkout "$BCS_COMMIT"
+export BCS_SPEC=../bitcoin-consensus-spec          # run.sh refuses another revision
 ./scripts/consensus-spec/run.sh build
 ./scripts/consensus-spec/run.sh vectors           # about a minute
 ./scripts/consensus-spec/run.sh corpus            # about 20 minutes
