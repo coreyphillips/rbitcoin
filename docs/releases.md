@@ -250,7 +250,8 @@ From current `origin/master` at `X.Y.99`:
    succeed (preview the GitHub Release text).
 4. PR → `master`. Label `release`. Poll **required +
    `core-functional` + `overlay-functional` + `warnet-example` +
-   `release-extra`**.
+   `consensus-spec` + `release-extra`**. `consensus-spec` is the slow
+   one: its peer-sync job takes about an hour.
 5. `gh pr merge --merge`. Fetch. Create a throwaway branch at
    `origin/master` (or `origin/vX.Y.x`) — do not steal `master` from
    another worktree (`git switch -C tag/vX.Y.Z origin/master`).
