@@ -92,17 +92,24 @@ header version/time, `finality_tests`, `sigop_cost_tests`,
 [bitcoin-consensus-spec](https://github.com/coreyphillips/bitcoin-consensus-spec)
 is an executable specification pinned to Bitcoin Core v32.1, with a
 conformance runner. The revision we run is `scripts/consensus-spec/pin.env`.
-`release-gate.yml` runs it on a ship PR, where `release-extra` needs it, and
-`release.yml` runs it again on the tag before `publish`
-([`releases.md`](./releases.md)). It runs weekly on `master`, so a red
-run names at most a week of commits. Label **`consensus-spec`** runs it on any PR.
+`release-gate.yml` runs vectors, corpus and interop on a ship PR, where
+`release-extra` needs them, and `release.yml` runs them again on the tag
+before `publish` ([`releases.md`](./releases.md)). All four suites run
+weekly on `master`, so a red run names at most a week of commits, and on
+any PR with label **`consensus-spec`**.
 
-| Suite | Driver | Gate |
+| Suite | Driver | Checks |
 |-------|--------|------|
 | vectors | `bcs-harness` (`rbitcoin-test`), in process: `ScriptCheckJob` and `script::verify_input`, the `CheckTransaction` pieces, the legacy and taproot sighash, the control-block commitment, BIP340 | Core's script, tx and sighash vectors, the BIP341 and BIP340 vectors, and qa-assets `script_assets_test.json`: every script query under all 64 consensus flag sets, against Core's verdict |
 | corpus | `chain_harness.py`: a fresh `rbitcoin-node --network regtest` per scenario, blocks through `submitblock` | Tip and height at every normative check of Core's recorded block scenarios. The harness applies Core's P2P delivery rules, so our P2P code is not under test here |
 | interop | `interop_node.py`: `rbitcoin-node --connect` to bitcoind v32.1, BIP324 v2 | Tip and height after syncing each scenario's chain, with no `Misbehaving` line in bitcoind's log |
 | peer-sync | `sync_node.py`: `rbitcoin-node --connect` to the runner, BIP324 v2. bitcoind v32.1 only tells which corpus blocks Core rejects | The runner is our only peer and serves each scenario's chain with every recorded block Core rejects on it, through our own sync. After each one the tip must still be its parent: one node takes them all in chain order, then reaches the final tip (follow), and a fresh node meets each at the end of its initial block download (ibd, 32 per scenario), the shape of #1537 |
+
+peer-sync is not in the release gate. It takes about an hour on a GitHub
+runner, where the other three finish in about 11 minutes, so a ship PR and
+a tag do not wait for it. A sync regression shows in the weekly run, or
+before merge on a PR labeled `consensus-spec`. To gate a release on it
+too, add it to the first list of the matrix in `consensus-spec.yml`.
 
 Level 2 is reported, not gated: our script error tokens are not Core's
 names, and we keep no UTXO set to hash.
