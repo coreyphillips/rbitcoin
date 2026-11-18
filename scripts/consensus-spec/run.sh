@@ -64,8 +64,14 @@ suite() {
     --known-failures "$HERE/known-failures.txt" --verbose) >"$log" 2>&1
   local ec=$?
   set -e
-  sed -n '/^suite /,$p' "$log"
-  grep -E '^(FAIL|DIVERGE|STALE) ' "$log" | head -n 40 || true
+  if grep -q '^suite ' "$log"; then
+    sed -n '/^suite /,$p' "$log"
+    grep -E '^(FAIL|DIVERGE|STALE) ' "$log" | head -n 40 || true
+  else
+    # The runner stopped before its summary (a harness that does not start, a
+    # usage error): its last lines say why.
+    tail -n 40 "$log"
+  fi
   return "$ec"
 }
 

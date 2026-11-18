@@ -33,7 +33,10 @@ release="${release%.0}"
 has_line() { grep -Fqx -- "$2" <<<"$1"; }
 
 for arch in x86_64-linux-gnu aarch64-linux-gnu; do
-  out="$(python3 "$PIN_PY" --inventory "$HERE/bitcoind.toml" --arch "$arch" 2>&1)" || out="release_pin failed: $out"
+  if ! out="$(python3 "$PIN_PY" --inventory "$HERE/bitcoind.toml" --arch "$arch" 2>&1)"; then
+    # The four checks below fail; say why (release_pin.py needs Python 3.11).
+    echo "# $arch: release_pin.py failed: $out"
+  fi
   check "$arch version is v$release" has_line "$out" "version=v$release"
   check "$arch tarball is bitcoin-$release" has_line "$out" "tarball=bitcoin-$release-$arch.tar.gz"
   check "$arch url is bitcoin-core-$release" has_line "$out" \
