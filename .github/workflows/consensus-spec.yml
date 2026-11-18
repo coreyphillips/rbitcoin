@@ -45,8 +45,10 @@ env:
   CARGO_INCREMENTAL: "0"
 
 jobs:
-  suite:
-    name: consensus-spec-${{ matrix.suite }}
+  # No `name`: the checks are "consensus-spec (vectors)" and so on. A skipped
+  # job never expands its matrix, so a name built from `matrix.suite` showed
+  # on every unlabeled PR as the raw expression.
+  consensus-spec:
     if: >-
       inputs.gate ||
       github.event_name != 'pull_request' ||
