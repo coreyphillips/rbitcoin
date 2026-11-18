@@ -11,18 +11,7 @@ PIN_PY="$ROOT/scripts/core-functional/release_pin.py"
 WF="$ROOT/.github/workflows/consensus-spec.yml"
 PASS=0
 FAIL=0
-
-check() {
-  local name="$1"
-  shift
-  if "$@"; then
-    echo "ok - $name"
-    PASS=$((PASS + 1))
-  else
-    echo "not ok - $name"
-    FAIL=$((FAIL + 1))
-  fi
-}
+source "$ROOT/scripts/contract-assert.sh"
 
 # shellcheck source=pin.env
 source "$HERE/pin.env"
@@ -37,14 +26,14 @@ for arch in x86_64-linux-gnu aarch64-linux-gnu; do
     # The four checks below fail; say why (release_pin.py needs Python 3.11).
     echo "# $arch: release_pin.py failed: $out"
   fi
-  check "$arch version is v$release" has_line "$out" "version=v$release"
-  check "$arch tarball is bitcoin-$release" has_line "$out" "tarball=bitcoin-$release-$arch.tar.gz"
-  check "$arch url is bitcoin-core-$release" has_line "$out" \
+  assert_ok "$arch version is v$release" has_line "$out" "version=v$release"
+  assert_ok "$arch tarball is bitcoin-$release" has_line "$out" "tarball=bitcoin-$release-$arch.tar.gz"
+  assert_ok "$arch url is bitcoin-core-$release" has_line "$out" \
     "url=https://bitcoincore.org/bin/bitcoin-core-$release/bitcoin-$release-$arch.tar.gz"
-  check "$arch has a sha256" grep -Eqx 'sha256=[0-9a-f]{64}' <<<"$out"
+  assert_ok "$arch has a sha256" grep -Eqx 'sha256=[0-9a-f]{64}' <<<"$out"
 done
 
-check "consensus-spec.yml fetches from bitcoind.toml" grep -Fq \
+assert_ok "consensus-spec.yml fetches from bitcoind.toml" grep -Fq \
   'FETCH_BITCOIND_INVENTORY=scripts/consensus-spec/bitcoind.toml ./scripts/core-functional/fetch-bitcoind.sh' "$WF"
 
 if [[ "$FAIL" -ne 0 ]]; then
