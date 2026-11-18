@@ -5,11 +5,12 @@
 # release-gate.yml calls it with `gate: true` on a ship PR, and
 # `release-extra` fails that PR unless it passes. release.yml calls it again
 # on the tag and `publish` needs it, so a tag that diverges from the spec's
-# Bitcoin Core does not become a GitHub Release. Weekly on the default branch
-# too, so a regression, or a known-failures.txt line that no longer fails,
-# shows up within a week of its commit rather than at the next ship PR. Also
-# workflow_dispatch and label `consensus-spec`. Not a required check on other
-# PRs.
+# Bitcoin Core does not become a GitHub Release. A `gate: true` run leaves
+# peer-sync out: it takes about an hour, and no ship PR or tag waits for it.
+# Weekly on the default branch too, all four suites, so a regression, or a
+# known-failures.txt line that no longer fails, shows up within a week of its
+# commit rather than at the next ship PR. Also workflow_dispatch and label
+# `consensus-spec`, all four. Not a required check on other PRs.
 #
 # No build cache: this gates a publish, and a cold build fits the timeout.
 name: consensus-spec
@@ -59,7 +60,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [vectors, corpus, interop, peer-sync]
+        # The first list is a gate run (ship PR, tag), the second every other
+        # run. To gate a release on peer-sync too, add it to the first.
+        suite: ${{ fromJSON(inputs.gate && '["vectors", "corpus", "interop"]' || '["vectors", "corpus", "interop", "peer-sync"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

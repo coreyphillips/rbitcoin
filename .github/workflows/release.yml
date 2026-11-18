@@ -290,9 +290,10 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-  # bitcoin-consensus-spec conformance at this SHA. A tag that fails it does
-  # not publish. Not on a nightly: consensus-spec.yml runs weekly on master
-  # itself, and peer-sync takes about an hour.
+  # bitcoin-consensus-spec conformance at this SHA: vectors, corpus and
+  # interop (`gate: true` leaves peer-sync to the weekly run). A tag that
+  # fails it does not publish. Not on a nightly: consensus-spec.yml runs
+  # weekly on master itself.
   consensus-spec:
     name: consensus-spec
     if: github.event_name != 'schedule' && !inputs.nightly

@@ -148,7 +148,7 @@ An operator with SSH `pushurl` may omit `--no-push`.
 | `musl-x86_64`, `musl-aarch64` | `.#rbitcoin-musl` natively on `ubuntu-latest` / `ubuntu-24.04-arm` |
 | `docker-amd64`, `docker-arm64` | Image from that arch's binaries on a native runner, then `docker-smoke.sh`. No push |
 | `windows`, `macos`, `nixos-module-runtime` | Native snapshots; NixOS VM test |
-| `consensus-spec` | `consensus-spec.yml` with `gate: true` on the tagged commit: the [bitcoin-consensus-spec](./consensus-tests.md#bitcoin-consensus-spec) vectors, corpus, interop and peer-sync suites |
+| `consensus-spec` | `consensus-spec.yml` with `gate: true` on the tagged commit: the [bitcoin-consensus-spec](./consensus-tests.md#bitcoin-consensus-spec) vectors, corpus and interop suites. peer-sync is weekly, not here |
 | `github-release` | Needs all of the above. Creates the Release with every asset |
 | `docker-publish` | After the Release. One multi-arch manifest (`linux/amd64`, `linux/arm64`) to GHCR, and to Docker Hub when `vars.DOCKERHUB_REPOSITORY` is set. Tags from `docker-tags.sh` |
 
@@ -206,7 +206,7 @@ four. Those checks show as `core-functional / core-functional` and so on.
 | `overlay-functional` | Nightly (`42 6`), `workflow_dispatch`, label **`overlay-functional`**; via `release-gate.yml` on label **`release`** **or** ship version |
 | `warnet-example` | Label **`warnet`**, `workflow_dispatch`; via `release-gate.yml` on label **`release`** **or** ship version. Two-tank Docker lab. |
 | `nixos-module-runtime` | Label **`nixos-module-runtime`**, `workflow_dispatch`, **or** GitHub Release tags (`release.yml`). Not required. |
-| `consensus-spec` | Via `release-gate.yml` on label **`release`** **or** ship version; GitHub Release tags (`release.yml`; `publish` needs it); weekly (`53 7 * * 1`, Mondays), `workflow_dispatch`, label **`consensus-spec`** (`consensus-spec.yml`). Not required on other PRs. What it runs: [`consensus-tests.md`](./consensus-tests.md#bitcoin-consensus-spec) |
+| `consensus-spec` | Via `release-gate.yml` on label **`release`** **or** ship version; GitHub Release tags (`release.yml`; `publish` needs it): vectors, corpus and interop. Weekly (`53 7 * * 1`, Mondays), `workflow_dispatch`, label **`consensus-spec`** (`consensus-spec.yml`): those three and peer-sync. Not required on other PRs. What it runs: [`consensus-tests.md`](./consensus-tests.md#bitcoin-consensus-spec) |
 | `release-extra` | Every PR (`release-gate.yml`). **Fails** if the PR is ship and any of `core-functional`, `overlay-functional`, `warnet-example`, `consensus-spec` is not success |
 | `zizmor` | Every PR, push to `master` / `main`, and Monday 05:23 UTC (`zizmor.yml`). Audits Actions workflows. The job stays green when it finds issues. Merge blocking is the Protected ruleset code-scanning tool, which must be `zizmor` (security alerts high or higher, other alerts errors). Not a required status check. `v*.*.x` is in that same ruleset, so those branches need `zizmor.yml` before the tool name changes |
 
@@ -251,13 +251,13 @@ From current `origin/master` at `X.Y.99`:
    succeed (preview the GitHub Release text).
 4. PR → `master`. Label `release`. Poll **required +
    `core-functional` + `overlay-functional` + `warnet-example` +
-   `consensus-spec` + `release-extra`**. `consensus-spec` is the slow
-   one: its peer-sync job takes about an hour. Also run `release.yml` on
-   the ship branch (`gh workflow run release.yml --ref
-   release/X.(Y+1).0`, `nightly` off) and wait for it to pass. It builds
-   and smokes the Windows, Darwin, image, and NixOS VM jobs the tag's
-   Release needs, and publishes nothing. A job that only fails after the
-   tag leaves a pushed tag with no Release.
+   `consensus-spec` + `release-extra`**. Also run `release.yml` on the
+   ship branch (`gh workflow run release.yml --ref release/X.(Y+1).0`,
+   `nightly` off) and wait for it to pass. It builds and smokes the
+   Windows, Darwin, image, and NixOS VM jobs and runs the
+   `consensus-spec` gate the tag's Release needs, and publishes nothing.
+   A job that only fails after the tag leaves a pushed tag with no
+   Release.
 5. `gh pr merge --merge`. Fetch. Create a throwaway branch at
    `origin/master` (or `origin/vX.Y.x`) — do not steal `master` from
    another worktree (`git switch -C tag/vX.Y.Z origin/master`).
