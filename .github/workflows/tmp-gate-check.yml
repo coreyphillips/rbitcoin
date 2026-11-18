@@ -1,0 +1,17 @@
+# Temporary, not for merge: calls consensus-spec.yml as release-gate.yml and
+# release.yml do, to see which suites a `gate: true` run starts.
+name: tmp-gate-check
+
+on:
+  push:
+    branches: ["tmp/consensus-spec-gate-check"]
+
+permissions:
+  contents: read
+
+jobs:
+  consensus-spec:
+    name: consensus-spec
+    uses: $/.github/workflows/consensus-spec.yml
+    with:
+      gate: true
