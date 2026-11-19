@@ -1,14 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
-  "new_skip": 2314,
-  "old_index": 7477,
+  "new_skip": 2418,
+  "old_index": 7575,
   "new_cap_used": true,
-  "run_id": "44262997090",
-  "old_name": "crates/rbitcoin-mempool/src/fee_est.rs:314:52: replace > with >= in published_depth_rate",
+  "run_id": "44483699111",
+  "old_name": "crates/rbitcoin-mempool/src/graph.rs:47:39: replace >= with < in meets_block_min_feerate",
   "new_len": 3047,
-  "new_remaining": 733,
-  "completed_new": 0,
-  "completed_old": 540,
+  "new_remaining": 629,
+  "completed_new": 104,
+  "completed_old": 98,
   "old_len": 29563,
-  "old_remaining": 29023
+  "old_remaining": 29465
 }
