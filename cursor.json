@@ -1,14 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
   "new_skip": 2418,
-  "old_index": 7575,
+  "old_index": 8089,
   "new_cap_used": true,
   "run_id": "44483699111",
-  "old_name": "crates/rbitcoin-mempool/src/graph.rs:47:39: replace >= with < in meets_block_min_feerate",
+  "old_name": "crates/rbitcoin-mempool/src/store.rs:445:9: replace Mempool::slot_stats -> (u32, u32, u32) with (0, 1, 1)",
   "new_len": 3047,
   "new_remaining": 629,
-  "completed_new": 104,
-  "completed_old": 98,
+  "completed_new": 0,
+  "completed_old": 514,
   "old_len": 29563,
-  "old_remaining": 29465
+  "old_remaining": 29049
 }
