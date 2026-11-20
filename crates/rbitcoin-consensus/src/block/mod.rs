@@ -801,7 +801,8 @@ pub fn bip16_active_from_prev_mtp(
     block_hash: &[u8; 32],
     prev_mtp: u32,
 ) -> bool {
-    if *block_hash == BIP16_EXCEPTION_MAINNET {
+    // Core `script_flag_exceptions`: each hash is listed for one network.
+    if params.network == bitcoin::Network::Bitcoin && *block_hash == BIP16_EXCEPTION_MAINNET {
         return false;
     }
     if params.network == bitcoin::Network::Testnet && *block_hash == BIP16_EXCEPTION_TESTNET3 {
@@ -985,9 +986,11 @@ impl ScriptVerifyFlags {
         let h = ctx.height.0;
         // Core sets P2SH|WITNESS|TAPROOT on every block. An exception hash
         // replaces that set: the BIP16 exception (`!bip16_active`) gets none,
-        // the Taproot exception gets P2SH|WITNESS.
+        // the Taproot exception (mainnet only) gets P2SH|WITNESS.
         let witness_active = bip16_active;
-        let taproot_active = bip16_active && *block_hash != TAPROOT_EXCEPTION_MAINNET;
+        let taproot_exception = ctx.params.network == bitcoin::Network::Bitcoin
+            && *block_hash == TAPROOT_EXCEPTION_MAINNET;
+        let taproot_active = bip16_active && !taproot_exception;
         Self {
             bip65_active: ctx.params.bip65_active_at(h),
             bip112_active: ctx.params.csv_active_at(h),

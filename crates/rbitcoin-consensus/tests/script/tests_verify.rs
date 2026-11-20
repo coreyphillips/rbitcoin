@@ -1606,3 +1606,41 @@ fn exception_hashes_change_which_scripts_run() {
         "neighbor executes the OP_0 redeem"
     );
 }
+
+/// Core lists each exception hash in one network's `script_flag_exceptions`:
+/// the BIP16 and taproot ones in mainnet's, the testnet3 BIP16 one in
+/// testnet3's. On any other network that hash gets the flags of any block.
+#[test]
+fn exception_hashes_apply_only_on_their_network() {
+    use rbitcoin_consensus::block::{
+        ScriptVerifyFlags, BIP16_EXCEPTION_MAINNET, BIP16_EXCEPTION_TESTNET3,
+        TAPROOT_EXCEPTION_MAINNET,
+    };
+    use rbitcoin_consensus::params::ChainParams;
+
+    let networks = [
+        ("main", ChainParams::mainnet()),
+        ("testnet3", ChainParams::testnet()),
+        ("testnet4", ChainParams::testnet4()),
+        ("signet", ChainParams::signet()),
+        ("regtest", ChainParams::regtest()),
+    ];
+    let exceptions = [
+        ("main", BIP16_EXCEPTION_MAINNET),
+        ("main", TAPROOT_EXCEPTION_MAINNET),
+        ("testnet3", BIP16_EXCEPTION_TESTNET3),
+    ];
+    for (name, params) in &networks {
+        let height = 1_000_000;
+        let any = ScriptVerifyFlags::for_block(params, height, &[3u8; 32], 0);
+        assert!(any.bip16_active && any.witness_active && any.taproot_active);
+        for (home, hash) in &exceptions {
+            let f = ScriptVerifyFlags::for_block(params, height, hash, 0);
+            if name == home {
+                assert_ne!(f, any, "{name}: its own exception");
+            } else {
+                assert_eq!(f, any, "{name}: a {home} exception is any block here");
+            }
+        }
+    }
+}
