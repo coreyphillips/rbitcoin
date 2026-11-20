@@ -6,8 +6,11 @@ usage: interop_node.py --network N --datadir D --peer HOST:PORT --stop-at HASH -
 
 Starts rbitcoin-node on an empty datadir, connected only to the peer, with the
 scenario's test activation heights. rbitcoin dials BIP324 v2 only, so the runner
-needs --v2transport. When the active tip is the stop hash it prints the stopped
-line and exits 0. The line has no hash_serialized_3: rbitcoin keeps no UTXO set.
+needs --v2transport. When the stop hash is on the active chain it prints the
+stopped line for that block and exits 0. rbitcoin-node has no switch to stop
+there, so with a stop hash below the peer's tip (PROTOCOL.md section 5) the
+node passes it, and the active chain through it is what the runner compares
+with bitcoind's. The line has no hash_serialized_3: rbitcoin keeps no UTXO set.
 
 Environment: RBTC_NODE (rbitcoin-node), RBTC_STALL_SECS (seconds without tip
 progress before giving up, default 120).
@@ -40,6 +43,16 @@ def fail(message, tip=None, height=None):
         ev["height"] = height
     emit(ev)
     sys.exit(1)
+
+
+def active_height(rpc, block_hash):
+    """The height of block_hash when it is on the active chain, else None."""
+    try:
+        hdr = rpc.call("getblockheader", block_hash)
+    except RuntimeError:
+        # An RPC error answer: the header is not known yet.
+        return None
+    return hdr["height"] if hdr.get("confirmations", -1) >= 1 else None
 
 
 def free_port():
@@ -159,6 +172,8 @@ def main():
         try:
             best = rpc.call("getbestblockhash")
             h = rpc.call("getblockcount")
+            # The stop hash joins the active chain only when the tip moves.
+            at = active_height(rpc, a.stop_at) if best != tip else None
         except Exception as e:  # noqa: BLE001
             stop(1)
             fail("RPC failed: %s" % e, tip, height)
@@ -166,8 +181,8 @@ def main():
             tip, height = best, h
             last_change = time.time()
             emit({"event": "tip", "tip": tip, "height": height})
-        if tip == a.stop_at:
-            emit({"event": "stopped", "tip": tip, "height": height})
+        if at is not None:
+            emit({"event": "stopped", "tip": a.stop_at, "height": at})
             sys.exit(stop(0))
         if time.time() - last_change > STALL:
             stop(1)
