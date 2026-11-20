@@ -2,7 +2,8 @@
 # bitcoin-consensus-spec conformance suites against this tree.
 #
 #   run.sh build              bcs-conformance (in $BCS_SPEC), rbitcoin-node, bcs-harness
-#   run.sh vectors            script, tx, sighash, taproot and BIP340 suites, in process
+#   run.sh vectors            script, tx, sighash, taproot, BIP340, proof-of-work,
+#                             signet and network parameter suites, in process
 #   run.sh corpus             the block corpus against rbitcoin-node over RPC
 #   run.sh interop BITCOIND   rbitcoin-node syncing each corpus chain from bitcoind
 #   run.sh peer-sync BITCOIND rbitcoin-node syncing each corpus chain from the runner,
@@ -82,7 +83,10 @@ case "${1:-}" in
       --bin rbitcoin-node --bin bcs-harness)
     ;;
   vectors)
-    suite vectors --impl "$(shq "$BIN/bcs-harness")" --exclude corpus
+    # block-connect connects a block to the coins a request lists. rbitcoin
+    # connects only against its store, so bcs-harness has no block_connect;
+    # the corpus connects blocks through rbitcoin-node instead.
+    suite vectors --impl "$(shq "$BIN/bcs-harness")" --exclude corpus,block-connect
     ;;
   corpus)
     suite corpus --suite corpus --timeout 900 \

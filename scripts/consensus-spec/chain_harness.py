@@ -4,9 +4,10 @@ by rbitcoin-node.
 
 Reuses the spec's Core chain harness (conformance/recorder/core_chain_harness.py)
 and swaps only the node it drives: each chain_reset starts a fresh
-`rbitcoin-node --network regtest` with an empty datadir, a loopback RPC port, no
-P2P listener, no seeds and no peers. Blocks go through submitblock, headers
-through submitheader, the clock through setmocktime. The Core P2P rules for a
+`rbitcoin-node --network regtest`, or `--network signet --signet-challenge` for a
+custom signet, with an empty datadir, a loopback RPC port, no P2P listener, no
+seeds and no peers. Blocks go through submitblock, headers through
+submitheader, the regtest clock through setmocktime. The Core P2P rules for a
 `via: p2p` delivery (mutated-block drop, anti-DoS work, unrequested blocks,
 headers messages) are applied by that harness on top of the RPCs, so the corpus
 tests block validation, storage, chain selection, reorganization and
@@ -43,15 +44,17 @@ def node_version():
 
 
 class RNode(core.Node):
-    def __init__(self, options):
+    def __init__(self, network, options):
         options = options or {}
-        unknown = set(options) - {"testactivationheight", "test", "vbparams"}
+        unknown = set(options) - {"testactivationheight", "test", "vbparams", "signetchallenge"}
         if unknown:
             raise core.BadRequest("unsupported options: %s" % ", ".join(sorted(unknown)))
         if options.get("test"):
             raise core.BadRequest("rbitcoin-node has no regtest switch for %s (Core -test=)" % options["test"])
         if options.get("vbparams"):
             raise core.BadRequest("rbitcoin-node has no -vbparams")
+        # core.Harness passes regtest, or signet with a signetchallenge.
+        self.network = network
         os.makedirs(WORK, exist_ok=True)
         self.dir = tempfile.mkdtemp(prefix="rbtc-bcs-", dir=WORK)
         self.port = core.free_port()
@@ -60,9 +63,11 @@ class RNode(core.Node):
         self.auth = None
         self.mocktime = None
         self.segwit_height = int(options.get("testactivationheight", {}).get("segwit", 0))
-        args = [NODE, "--network", "regtest", "--datadir", self.dir,
+        args = [NODE, "--network", network, "--datadir", self.dir,
                 "--rpc-listen", "127.0.0.1:%d" % self.port,
                 "--no-listen", "--no-seeds", "--no-discover"]
+        if "signetchallenge" in options:
+            args += ["--signet-challenge", options["signetchallenge"]]
         for name, h in sorted(options.get("testactivationheight", {}).items()):
             args += ["--test-activation-height", "%s@%d" % (name, h)]
         env = dict(os.environ)
