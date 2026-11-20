@@ -39,12 +39,21 @@ pub fn signet_magic(challenge: &Script) -> [u8; 4] {
     bytes!(digest, 0, 4)
 }
 
-/// Validate BIP325 signet block solution against `challenge`.
+/// The genesis block of every signet: a custom challenge does not change it.
+static SIGNET_GENESIS_HASH: std::sync::LazyLock<bitcoin::BlockHash> =
+    std::sync::LazyLock::new(|| {
+        bitcoin::constants::genesis_block(bitcoin::Network::Signet).block_hash()
+    });
+
+/// Validate BIP325 signet block solution against `challenge`. Core
+/// `CheckSignetBlockSolution` skips the genesis block, by its hash.
 pub fn validate_signet_block_solution(
     block: &Block,
     challenge: &Script,
 ) -> Result<(), ConsensusError> {
-    if block.header.prev_blockhash.to_byte_array() == [0u8; 32] {
+    if block.header.prev_blockhash.to_byte_array() == [0u8; 32]
+        && block.block_hash() == *SIGNET_GENESIS_HASH
+    {
         return Ok(());
     }
 

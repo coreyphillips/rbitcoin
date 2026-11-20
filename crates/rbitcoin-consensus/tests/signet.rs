@@ -70,14 +70,28 @@ fn to_spend_script_sig_starts_with_op_0() {
     assert_eq!(ss[0], 0x00, "Core CScript(OP_0) then push(block_data)");
 }
 
+/// Core `CheckSignetBlockSolution` skips the genesis block by its hash. Every
+/// signet, custom or not, has the same genesis block, and it carries no
+/// solution.
 #[test]
-fn genesis_prev_skips_challenge() {
+fn genesis_skips_challenge() {
+    let genesis = bitcoin::constants::genesis_block(bitcoin::Network::Signet);
+    validate_signet_block_solution(&genesis, Script::from_bytes(&[0x51])).unwrap();
+    validate_signet_block_solution(&genesis, Script::from_bytes(&[0x00])).unwrap();
+}
+
+/// A zero previous hash alone does not make a block the genesis block: Core
+/// checks the solution of any other block with one.
+#[test]
+fn zero_prev_is_checked_unless_genesis() {
     let raw = include_bytes!("../tests/fixtures/signet_block_1.bin");
     let mut block: Block = deserialize(raw).unwrap();
     block.header.prev_blockhash = bitcoin::BlockHash::from_byte_array([0u8; 32]);
-    // Empty txs would fail for non-genesis; genesis path returns Ok first.
     block.txdata.clear();
-    validate_signet_block_solution(&block, Script::from_bytes(&[0x51])).unwrap();
+    assert!(matches!(
+        validate_signet_block_solution(&block, Script::from_bytes(&[0x51])),
+        Err(ConsensusError::BadBlock("signet: no coinbase"))
+    ));
 }
 
 /// `signet:` parse errors soften only while a collector is active. `signet
