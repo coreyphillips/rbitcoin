@@ -5128,10 +5128,15 @@ pub fn queue_block_getdata(
     if want.is_empty() {
         return Ok(());
     }
+    // `on_cmpctblock_reject_early` drops a compact block for a hash this
+    // session failed to reconstruct, so that hash is asked for in full.
     let inv: Vec<Inventory> = want
         .iter()
         .map(|h| {
-            if compact && compact_getdata_near_tip(hub, h) {
+            if compact
+                && compact_getdata_near_tip(hub, h)
+                && !session.is_some_and(|s| s.has_failed_cmpct(h))
+            {
                 Inventory::CompactBlock(*h)
             } else {
                 Inventory::WitnessBlock(*h)

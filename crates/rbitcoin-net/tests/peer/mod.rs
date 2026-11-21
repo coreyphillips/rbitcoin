@@ -2336,6 +2336,59 @@ async fn witness_mutated_cmpct_reconstruct_asks_the_same_peer_for_the_block() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// After a failed reconstruct the session drops any compact block for that
+/// hash. A mutated full-block reply must be asked for again as a full
+/// block, or the valid compact reply is dropped and the ask times out.
+#[tokio::test]
+async fn failed_cmpct_reconstruct_retries_stay_full_blocks() {
+    let (dir, hub) = open_genesis_announce("cmpct-wit-retry-full", true);
+    let (good, bad) = witness_committed_pair(&hb_tip_child(&hub));
+    let hash = good.block_hash();
+    let peers = rbitcoin_net::peers::PeerHub::new();
+    let manual = live_peer_as(&peers, 18488, 88, rbitcoin_net::peers::PeerConnType::Manual);
+    let (tx, mut rx) = mpsc::unbounded_channel();
+    manual.attach_out(tx.clone());
+    let mut follow = PeerFollowState::new();
+    follow.cmpct_version = 2;
+    let session = Some(manual.as_ref());
+    handle_peer_frame(
+        frame_for(NetworkMessage::Headers(vec![good.header])),
+        &hub,
+        &tx,
+        &mut follow,
+        session,
+    )
+    .await
+    .unwrap();
+    let hsi = HeaderAndShortIds::from_block(&bad, 0xbeef, 2, &[]).unwrap();
+    for msg in [
+        NetworkMessage::CmpctBlock(CmpctBlock { compact_block: hsi }),
+        NetworkMessage::Block(bad),
+    ] {
+        let _ = sent(&mut rx);
+        handle_peer_frame(frame_for(msg), &hub, &tx, &mut follow, session)
+            .await
+            .unwrap();
+        let msgs = sent(&mut rx);
+        assert!(
+            asked_witness(&msgs, hash),
+            "asked for the full block, got {msgs:?}"
+        );
+    }
+    handle_peer_frame(
+        frame_for(NetworkMessage::Block(good)),
+        &hub,
+        &tx,
+        &mut follow,
+        session,
+    )
+    .await
+    .unwrap();
+    assert_eq!(hub.tip_hash(), Some(hash), "the full block connects");
+    assert!(!manual.stop.load(Ordering::SeqCst), "kept");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// Core `NewPoWValidBlock` sends no compact block while segwit is not
 /// active at the block's height. The same block is sent once it is.
 #[tokio::test]
