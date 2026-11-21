@@ -2336,6 +2336,57 @@ async fn witness_mutated_cmpct_reconstruct_asks_the_same_peer_for_the_block() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// The full-block retry joins the announcer's download window. Once another
+/// peer delivers that block, the announcer is not waited on for it.
+#[tokio::test]
+async fn cmpct_retry_delivered_by_another_peer_does_not_time_out_the_announcer() {
+    let (dir, hub) = open_genesis_announce("cmpct-wit-retry-elsewhere", true);
+    let (good, bad) = witness_committed_pair(&hb_tip_child(&hub));
+    let hash = good.block_hash();
+    let peers = rbitcoin_net::peers::PeerHub::new();
+    let start = 1_700_000_000;
+    peers.set_mock_now(start);
+    let manual = live_peer_as(&peers, 18489, 89, rbitcoin_net::peers::PeerConnType::Manual);
+    let other = outbound_test_peer(&peers, 18490);
+    let (tx, _rx) = mpsc::unbounded_channel();
+    let (other_tx, mut other_rx) = mpsc::unbounded_channel();
+    manual.attach_out(tx.clone());
+    other.attach_out(other_tx.clone());
+    let mut follow = PeerFollowState::new();
+    follow.cmpct_version = 2;
+    follow.requested_blocks.insert(hash);
+    hub.note_asked_block(hash);
+    let hsi = HeaderAndShortIds::from_block(&bad, 0xbeef, 2, &[]).unwrap();
+    on_cmpctblock(
+        &hub,
+        &tx,
+        &mut follow,
+        Some(manual.as_ref()),
+        &CmpctBlock { compact_block: hsi },
+    )
+    .await
+    .unwrap();
+    assert!(asked_witness(&sent(&mut other_rx), hash));
+    on_block(
+        &hub,
+        &other_tx,
+        &mut PeerFollowState::new(),
+        Some(other.as_ref()),
+        &good,
+    )
+    .await
+    .unwrap();
+    assert_eq!(hub.tip_hash(), Some(hash), "the other peer delivers it");
+
+    peers.set_mock_now(start + BLOCK_INTERVAL_SECS + 1);
+    heartbeat_once(&hub, &tx, &mut follow, &manual).await;
+    assert!(
+        !manual.stop.load(Ordering::SeqCst),
+        "the announcer timed out on a block it no longer owes"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// After a failed reconstruct the session drops any compact block for that
 /// hash. A mutated full-block reply must be asked for again as a full
 /// block, or the valid compact reply is dropped and the ask times out.

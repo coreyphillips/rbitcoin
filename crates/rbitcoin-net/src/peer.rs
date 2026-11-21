@@ -3767,7 +3767,9 @@ pub async fn on_heartbeat(
         s.request_disconnect();
     }
     let now = s.clock_now();
-    s.sync_block_download(now, |h| follow.block_in_flight(h));
+    // A block another peer delivered no longer holds this peer's download
+    // timeout. The ask itself is released by the getdata stall below.
+    s.sync_block_download(now, |h| follow.block_in_flight(h) && !hub.already_have(*h));
     // Blocks in flight, or a frame already read and waiting to decode,
     // suspend the ping timeout. A due ping still sends. The next TCP read
     // stays armed, so this is the heartbeat side of that same wait.
