@@ -1,14 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
-  "new_skip": 2880,
-  "old_index": 9378,
+  "new_skip": 2946,
+  "old_index": 9568,
   "new_cap_used": true,
-  "run_id": "44998487327",
-  "old_name": "crates/rbitcoin-net/src/chain.rs:4600:16: replace == with != in proposal_one_input",
+  "run_id": "45137482328",
+  "old_name": "crates/rbitcoin-net/src/codec.rs:583:9: delete match arm \"ping\" in decode_cmd_payload",
   "new_len": 3047,
-  "new_remaining": 167,
-  "completed_new": 0,
-  "completed_old": 194,
+  "new_remaining": 101,
+  "completed_new": 66,
+  "completed_old": 190,
   "old_len": 29563,
-  "old_remaining": 29369
+  "old_remaining": 29373
 }
