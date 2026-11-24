@@ -1,14 +1,14 @@
 {
   "new_base": "11db7a6445eebc40f503de9ab0e5b7d236ff042e",
   "new_skip": 3038,
-  "old_index": 9853,
+  "old_index": 10171,
   "new_cap_used": true,
   "run_id": "45374931949",
-  "old_name": "crates/rbitcoin-net/src/fee_history_file.rs:218:23: replace != with == in load",
+  "old_name": "crates/rbitcoin-net/src/net_permissions.rs:327:27: replace == with != in NetPermTable::flags_for",
   "new_len": 3047,
   "new_remaining": 9,
-  "completed_new": 92,
-  "completed_old": 97,
+  "completed_new": 0,
+  "completed_old": 318,
   "old_len": 29563,
-  "old_remaining": 29466
+  "old_remaining": 29245
 }
