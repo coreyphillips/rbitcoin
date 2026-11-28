@@ -1,14 +1,14 @@
 {
   "new_base": "8bf6a023b8c1adddc64672895270a4ce95717bd0",
   "new_skip": 0,
-  "old_index": 12710,
+  "old_index": 12893,
   "new_cap_used": false,
-  "run_id": "45971094540",
-  "old_name": "crates/rbitcoin-net/src/peers.rs:1288:42: replace && with || in LivePeer::ping_timeout",
+  "run_id": "46125976496",
+  "old_name": "crates/rbitcoin-net/src/peers.rs:1934:9: replace PeerHub::rpc_local_addresses -> Vec<(String, u16, i32)> with vec![(String::new(), 0, 0)]",
   "new_len": 0,
   "new_remaining": 0,
   "completed_new": 0,
-  "completed_old": 175,
+  "completed_old": 183,
   "old_len": 32610,
-  "old_remaining": 32435
+  "old_remaining": 32427
 }
